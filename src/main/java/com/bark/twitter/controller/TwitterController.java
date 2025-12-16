@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -38,11 +39,14 @@ public class TwitterController {
             @ApiResponse(responseCode = "200", description = "Tweet found",
                     content = @Content(schema = @Schema(implementation = TweetResponse.class))),
             @ApiResponse(responseCode = "401", description = "Missing API key",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"error\": \"Missing x-api-key header\"}"))),
             @ApiResponse(responseCode = "403", description = "Invalid API key",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"error\": \"Invalid API key\"}"))),
             @ApiResponse(responseCode = "404", description = "Tweet not found",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"error\": \"Tweet not found: 123456789\"}")))
     })
     public JsonNode getTweet(@Parameter(description = "Tweet ID") @PathVariable String id) {
         long start = System.currentTimeMillis();
@@ -58,11 +62,14 @@ public class TwitterController {
             @ApiResponse(responseCode = "200", description = "User found",
                     content = @Content(schema = @Schema(implementation = UserResponse.class))),
             @ApiResponse(responseCode = "401", description = "Missing API key",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"error\": \"Missing x-api-key header\"}"))),
             @ApiResponse(responseCode = "403", description = "Invalid API key",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"error\": \"Invalid API key\"}"))),
             @ApiResponse(responseCode = "404", description = "User not found",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"error\": \"User not found: 123456789\"}")))
     })
     public JsonNode getUser(@Parameter(description = "User ID") @PathVariable String id) {
         long start = System.currentTimeMillis();
@@ -78,11 +85,14 @@ public class TwitterController {
             @ApiResponse(responseCode = "200", description = "Community found",
                     content = @Content(schema = @Schema(implementation = CommunityResponse.class))),
             @ApiResponse(responseCode = "401", description = "Missing API key",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"error\": \"Missing x-api-key header\"}"))),
             @ApiResponse(responseCode = "403", description = "Invalid API key",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"error\": \"Invalid API key\"}"))),
             @ApiResponse(responseCode = "404", description = "Community not found",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"error\": \"Community not found: 123456789\"}")))
     })
     public JsonNode getCommunity(@Parameter(description = "Community ID") @PathVariable String id) {
         long start = System.currentTimeMillis();

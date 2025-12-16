@@ -4,6 +4,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "Error response")
 public record ErrorResponse(
-        @Schema(description = "Error message", example = "Tweet not found: 123456789")
+        @Schema(description = "Error message")
         String error
 ) {}
