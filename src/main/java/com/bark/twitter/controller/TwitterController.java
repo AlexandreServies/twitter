@@ -34,7 +34,7 @@ public class TwitterController {
     }
 
     @GetMapping("/tweet/{id}")
-    @Operation(summary = "Get tweet by ID", description = "Fetches a tweet by its ID. For replies, includes full replied-to tweet data.")
+    @Operation(summary = "Get tweet by ID", description = "Fetches a tweet by its ID.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Tweet found",
                     content = @Content(schema = @Schema(implementation = TweetResponse.class))),
