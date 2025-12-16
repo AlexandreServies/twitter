@@ -1,8 +1,6 @@
 package com.bark.twitter.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -11,8 +9,6 @@ import java.util.Optional;
 
 @Component
 public class SynopticClient {
-
-    private static final Logger log = LoggerFactory.getLogger(SynopticClient.class);
 
     private final WebClient webClient;
 
@@ -33,10 +29,10 @@ public class SynopticClient {
 
             return extractFirstFromData(response);
         } catch (WebClientResponseException e) {
-            log.error("Error fetching tweet {}: {} {}", tweetId, e.getStatusCode(), e.getMessage());
+            System.out.println("[ERROR] Error fetching tweet " + tweetId + ": " + e.getStatusCode() + " " + e.getMessage());
             return Optional.empty();
         } catch (Exception e) {
-            log.error("Error fetching tweet {}: {}", tweetId, e.getMessage());
+            System.out.println("[ERROR] Error fetching tweet " + tweetId + ": " + e.getMessage());
             return Optional.empty();
         }
     }
@@ -54,10 +50,10 @@ public class SynopticClient {
 
             return extractFirstFromData(response);
         } catch (WebClientResponseException e) {
-            log.error("Error fetching user {}: {} {}", userId, e.getStatusCode(), e.getMessage());
+            System.out.println("[ERROR] Error fetching user " + userId + ": " + e.getStatusCode() + " " + e.getMessage());
             return Optional.empty();
         } catch (Exception e) {
-            log.error("Error fetching user {}: {}", userId, e.getMessage());
+            System.out.println("[ERROR] Error fetching user " + userId + ": " + e.getMessage());
             return Optional.empty();
         }
     }
