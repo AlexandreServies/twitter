@@ -15,6 +15,7 @@ spring:
     lazy-initialization: true
   cache:
     type: caffeine
+    cache-names: tweets,users,communities
     caffeine:
       spec: maximumSize=10000,expireAfterWrite=300s
 
