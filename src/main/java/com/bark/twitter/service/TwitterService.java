@@ -1,6 +1,7 @@
 package com.bark.twitter.service;
 
 import com.bark.twitter.client.SynopticClient;
+import com.bark.twitter.client.TwitterApiClient;
 import com.bark.twitter.exception.NotFoundException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -12,12 +13,14 @@ import org.springframework.stereotype.Service;
 public class TwitterService {
 
     private final SynopticClient synopticClient;
+    private final TwitterApiClient twitterApiClient;
     private final Cache tweetsCache;
     private final Cache usersCache;
     private final Cache communitiesCache;
 
-    public TwitterService(SynopticClient synopticClient, CacheManager cacheManager) {
+    public TwitterService(SynopticClient synopticClient, TwitterApiClient twitterApiClient, CacheManager cacheManager) {
         this.synopticClient = synopticClient;
+        this.twitterApiClient = twitterApiClient;
         this.tweetsCache = cacheManager.getCache("tweets");
         this.usersCache = cacheManager.getCache("users");
         this.communitiesCache = cacheManager.getCache("communities");
@@ -94,7 +97,10 @@ public class TwitterService {
             return cached;
         }
 
-        // Not implemented yet
-        throw new UnsupportedOperationException("Community lookup not implemented");
+        JsonNode community = twitterApiClient.getCommunity(communityId)
+                .orElseThrow(() -> new NotFoundException("Community not found: " + communityId));
+
+        communitiesCache.put(communityId, community);
+        return community;
     }
 }
