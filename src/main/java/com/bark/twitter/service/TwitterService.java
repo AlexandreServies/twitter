@@ -36,9 +36,22 @@ public class TwitterService {
         JsonNode tweet = synopticClient.getTweet(tweetId)
                 .orElseThrow(() -> new NotFoundException("Tweet not found: " + tweetId));
 
-        JsonNode enriched = enrichReplyData(tweet);
+        JsonNode transformed = transformMedia(tweet);
+        JsonNode enriched = enrichReplyData(transformed);
         tweetsCache.put(tweetId, enriched);
         return enriched;
+    }
+
+    private JsonNode transformMedia(JsonNode tweet) {
+        if (!(tweet instanceof ObjectNode node)) {
+            return tweet;
+        }
+        node.remove("media");
+        JsonNode mediaV2 = node.remove("mediaV2");
+        if (mediaV2 != null && !mediaV2.isNull()) {
+            node.set("media", mediaV2);
+        }
+        return node;
     }
 
     private JsonNode enrichReplyData(JsonNode tweet) {
@@ -71,6 +84,7 @@ public class TwitterService {
 
         JsonNode tweet = synopticClient.getTweet(tweetId).orElse(null);
         if (tweet != null) {
+            tweet = transformMedia(tweet);
             tweetsCache.put(tweetId, tweet);
         }
         return tweet;
