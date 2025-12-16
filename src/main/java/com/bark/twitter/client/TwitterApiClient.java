@@ -25,7 +25,7 @@ public class TwitterApiClient {
             JsonNode response = webClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/community/info")
-                            .queryParam("id", communityId)
+                            .queryParam("community_id", communityId)
                             .build())
                     .retrieve()
                     .bodyToMono(JsonNode.class)
