@@ -27,6 +27,7 @@ public class TwitterService {
                 .orElseThrow(() -> new NotFoundException("User not found: " + userId));
     }
 
+    @Cacheable(value = "communities", key = "#communityId")
     public JsonNode getCommunity(String communityId) {
         // Not implemented yet
         throw new UnsupportedOperationException("Community lookup not implemented");
