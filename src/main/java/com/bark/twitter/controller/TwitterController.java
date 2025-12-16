@@ -1,10 +1,12 @@
 package com.bark.twitter.controller;
 
 import com.bark.twitter.dto.CommunityResponse;
+import com.bark.twitter.dto.ErrorResponse;
 import com.bark.twitter.dto.TweetResponse;
 import com.bark.twitter.dto.UserResponse;
 import com.bark.twitter.service.TwitterService;
 import com.fasterxml.jackson.databind.JsonNode;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -12,7 +14,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -36,9 +37,12 @@ public class TwitterController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Tweet found",
                     content = @Content(schema = @Schema(implementation = TweetResponse.class))),
-            @ApiResponse(responseCode = "401", description = "Missing API key"),
-            @ApiResponse(responseCode = "403", description = "Invalid API key"),
-            @ApiResponse(responseCode = "404", description = "Tweet not found")
+            @ApiResponse(responseCode = "401", description = "Missing API key",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Invalid API key",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Tweet not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public JsonNode getTweet(@Parameter(description = "Tweet ID") @PathVariable String id) {
         long start = System.currentTimeMillis();
@@ -53,9 +57,12 @@ public class TwitterController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "User found",
                     content = @Content(schema = @Schema(implementation = UserResponse.class))),
-            @ApiResponse(responseCode = "401", description = "Missing API key"),
-            @ApiResponse(responseCode = "403", description = "Invalid API key"),
-            @ApiResponse(responseCode = "404", description = "User not found")
+            @ApiResponse(responseCode = "401", description = "Missing API key",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Invalid API key",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "User not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public JsonNode getUser(@Parameter(description = "User ID") @PathVariable String id) {
         long start = System.currentTimeMillis();
@@ -70,9 +77,12 @@ public class TwitterController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Community found",
                     content = @Content(schema = @Schema(implementation = CommunityResponse.class))),
-            @ApiResponse(responseCode = "401", description = "Missing API key"),
-            @ApiResponse(responseCode = "403", description = "Invalid API key"),
-            @ApiResponse(responseCode = "404", description = "Community not found")
+            @ApiResponse(responseCode = "401", description = "Missing API key",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Invalid API key",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Community not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public JsonNode getCommunity(@Parameter(description = "Community ID") @PathVariable String id) {
         long start = System.currentTimeMillis();
