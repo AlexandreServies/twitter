@@ -50,12 +50,26 @@ public class TwitterService {
         }
 
         String repliedToTweetId = replyToStatusId.asText();
-        JsonNode repliedToTweet = synopticClient.getTweet(repliedToTweetId).orElse(null);
+        JsonNode repliedToTweet = fetchTweetWithCache(repliedToTweetId);
 
         if (repliedToTweet != null) {
             ((ObjectNode) tweet).set("reply", repliedToTweet);
         }
 
+        return tweet;
+    }
+
+    private JsonNode fetchTweetWithCache(String tweetId) {
+        JsonNode cached = tweetsCache.get(tweetId, JsonNode.class);
+        if (cached != null) {
+            System.out.println("[" + System.currentTimeMillis() + "][TWEET][" + tweetId + "] Cache hit");
+            return cached;
+        }
+
+        JsonNode tweet = synopticClient.getTweet(tweetId).orElse(null);
+        if (tweet != null) {
+            tweetsCache.put(tweetId, tweet);
+        }
         return tweet;
     }
 
