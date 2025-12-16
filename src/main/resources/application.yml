@@ -43,7 +43,7 @@ synoptic:
     read-timeout-ms: 10000
 
 twitterapi:
-  api-key: ${TWITTERAPI_API_KEY:your-api-key-here}
+  api-key: new1_a8b0f543e0fc4a628a523c46e15b2575
 
 security:
   api-keys:

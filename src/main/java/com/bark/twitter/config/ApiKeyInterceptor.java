@@ -22,8 +22,12 @@ public class ApiKeyInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         String path = request.getRequestURI();
 
-        // Allow health check without authentication
-        if (path.equals("/health") || path.startsWith("/actuator")) {
+        // Allow public endpoints without authentication
+        if (path.equals("/health") ||
+            path.startsWith("/actuator") ||
+            path.startsWith("/swagger-ui") ||
+            path.startsWith("/v3/api-docs") ||
+            path.equals("/swagger-ui.html")) {
             return true;
         }
 
