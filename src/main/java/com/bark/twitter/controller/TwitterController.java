@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -82,8 +83,7 @@ public class TwitterController {
     }
 
     @GetMapping("/health")
-    @Operation(summary = "Health check", description = "Returns service health status.")
-    @ApiResponse(responseCode = "200", description = "Service is healthy")
+    @Hidden
     public Map<String, String> health() {
         return Map.of("status", "UP");
     }
