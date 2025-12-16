@@ -28,7 +28,7 @@ public class SynopticClient {
                     .block();
 
             Optional<JsonNode> result = extractFirstFromData(response);
-            System.out.println("[" + System.currentTimeMillis() + "][SYNOPTIC][" + tweetId + "] " + result.orElse(null));
+            System.out.println("[" + System.currentTimeMillis() + "][SYNOPTIC][" + tweetId + "] " + (result.isPresent() ? result.get() : "Not found"));
             return result;
         } catch (WebClientResponseException e) {
             System.out.println("[ERROR] Error fetching tweet " + tweetId + ": " + e.getStatusCode() + " " + e.getMessage());
@@ -51,7 +51,7 @@ public class SynopticClient {
                     .block();
 
             Optional<JsonNode> result = extractFirstFromData(response);
-            System.out.println("[" + System.currentTimeMillis() + "][SYNOPTIC][" + userId + "] " + result.orElse(null));
+            System.out.println("[" + System.currentTimeMillis() + "][SYNOPTIC][" + userId + "] " + (result.isPresent() ? result.get() : "Not found"));
             return result;
         } catch (WebClientResponseException e) {
             System.out.println("[ERROR] Error fetching user " + userId + ": " + e.getStatusCode() + " " + e.getMessage());

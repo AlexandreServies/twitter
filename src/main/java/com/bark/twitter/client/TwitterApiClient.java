@@ -32,7 +32,7 @@ public class TwitterApiClient {
                     .block();
 
             Optional<JsonNode> result = extractCommunityInfo(response);
-            System.out.println("[" + System.currentTimeMillis() + "][TWITTERAPI][" + communityId + "] " + result.orElse(null));
+            System.out.println("[" + System.currentTimeMillis() + "][TWITTERAPI][" + communityId + "] " + (result.isPresent() ? result.get() : "Not found"));
             return result;
         } catch (WebClientResponseException e) {
             System.out.println("[ERROR] Error fetching community " + communityId + ": " + e.getStatusCode() + " " + e.getMessage());
