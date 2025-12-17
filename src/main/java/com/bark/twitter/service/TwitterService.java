@@ -2,7 +2,10 @@ package com.bark.twitter.service;
 
 import com.bark.twitter.client.SynopticClient;
 import com.bark.twitter.client.TwitterApiClient;
+import com.bark.twitter.dto.twitterapi.AuthorDto;
+import com.bark.twitter.dto.twitterapi.TweetDto;
 import com.bark.twitter.exception.NotFoundException;
+import com.bark.twitter.mapper.SynopticToTwitterApiMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.cache.Cache;
@@ -14,32 +17,37 @@ public class TwitterService {
 
     private final SynopticClient synopticClient;
     private final TwitterApiClient twitterApiClient;
+    private final SynopticToTwitterApiMapper mapper;
     private final Cache tweetsCache;
     private final Cache usersCache;
     private final Cache communitiesCache;
 
-    public TwitterService(SynopticClient synopticClient, TwitterApiClient twitterApiClient, CacheManager cacheManager) {
+    public TwitterService(SynopticClient synopticClient, TwitterApiClient twitterApiClient,
+                          SynopticToTwitterApiMapper mapper, CacheManager cacheManager) {
         this.synopticClient = synopticClient;
         this.twitterApiClient = twitterApiClient;
+        this.mapper = mapper;
         this.tweetsCache = cacheManager.getCache("tweets");
         this.usersCache = cacheManager.getCache("users");
         this.communitiesCache = cacheManager.getCache("communities");
     }
 
-    public JsonNode getTweet(String tweetId) {
-        JsonNode cached = tweetsCache.get(tweetId, JsonNode.class);
+    public TweetDto getTweet(String tweetId) {
+        TweetDto cached = tweetsCache.get(tweetId, TweetDto.class);
         if (cached != null) {
             System.out.println("[" + System.currentTimeMillis() + "][TWEET][" + tweetId + "] Cache hit");
             return cached;
         }
 
-        JsonNode tweet = synopticClient.getTweet(tweetId)
+        JsonNode synopticTweet = synopticClient.getTweet(tweetId)
                 .orElseThrow(() -> new NotFoundException("Tweet not found: " + tweetId));
 
-        JsonNode transformed = transformMedia(tweet);
+        JsonNode transformed = transformMedia(synopticTweet);
         JsonNode enriched = enrichReplyData(transformed);
-        tweetsCache.put(tweetId, enriched);
-        return enriched;
+
+        TweetDto tweetDto = mapper.mapTweet(enriched);
+        tweetsCache.put(tweetId, tweetDto);
+        return tweetDto;
     }
 
     private JsonNode transformMedia(JsonNode tweet) {
@@ -66,7 +74,7 @@ public class TwitterService {
         }
 
         String repliedToTweetId = replyToStatusId.asText();
-        JsonNode repliedToTweet = fetchTweetWithCache(repliedToTweetId);
+        JsonNode repliedToTweet = fetchRawTweetWithCache(repliedToTweetId);
 
         if (repliedToTweet != null) {
             ((ObjectNode) tweet).set("reply", repliedToTweet);
@@ -75,33 +83,28 @@ public class TwitterService {
         return tweet;
     }
 
-    private JsonNode fetchTweetWithCache(String tweetId) {
-        JsonNode cached = tweetsCache.get(tweetId, JsonNode.class);
-        if (cached != null) {
-            System.out.println("[" + System.currentTimeMillis() + "][TWEET][" + tweetId + "] Cache hit");
-            return cached;
-        }
-
+    private JsonNode fetchRawTweetWithCache(String tweetId) {
+        // Check if we have the raw tweet data
         JsonNode tweet = synopticClient.getTweet(tweetId).orElse(null);
         if (tweet != null) {
             tweet = transformMedia(tweet);
-            tweetsCache.put(tweetId, tweet);
         }
         return tweet;
     }
 
-    public JsonNode getUser(String userId) {
-        JsonNode cached = usersCache.get(userId, JsonNode.class);
+    public AuthorDto getUser(String userId) {
+        AuthorDto cached = usersCache.get(userId, AuthorDto.class);
         if (cached != null) {
             System.out.println("[" + System.currentTimeMillis() + "][USER][" + userId + "] Cache hit");
             return cached;
         }
 
-        JsonNode user = synopticClient.getUser(userId)
+        JsonNode synopticUser = synopticClient.getUser(userId)
                 .orElseThrow(() -> new NotFoundException("User not found: " + userId));
 
-        usersCache.put(userId, user);
-        return user;
+        AuthorDto userDto = mapper.mapUser(synopticUser);
+        usersCache.put(userId, userDto);
+        return userDto;
     }
 
     public JsonNode getCommunity(String communityId) {

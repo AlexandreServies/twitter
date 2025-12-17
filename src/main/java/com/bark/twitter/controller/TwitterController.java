@@ -2,8 +2,8 @@ package com.bark.twitter.controller;
 
 import com.bark.twitter.dto.CommunityResponse;
 import com.bark.twitter.dto.ErrorResponse;
-import com.bark.twitter.dto.TweetResponse;
-import com.bark.twitter.dto.UserResponse;
+import com.bark.twitter.dto.twitterapi.AuthorDto;
+import com.bark.twitter.dto.twitterapi.TweetDto;
 import com.bark.twitter.service.TwitterService;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -37,7 +37,7 @@ public class TwitterController {
     @Operation(summary = "Get tweet by ID", description = "Fetches a tweet by its ID.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Tweet found",
-                    content = @Content(schema = @Schema(implementation = TweetResponse.class))),
+                    content = @Content(schema = @Schema(implementation = TweetDto.class))),
             @ApiResponse(responseCode = "401", description = "Missing API key",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = "{\"error\": \"Missing x-api-key header\"}"))),
@@ -48,10 +48,10 @@ public class TwitterController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = "{\"error\": \"Tweet not found: 123456789\"}")))
     })
-    public JsonNode getTweet(@Parameter(description = "Tweet ID") @PathVariable String id) {
+    public TweetDto getTweet(@Parameter(description = "Tweet ID") @PathVariable String id) {
         long start = System.currentTimeMillis();
         System.out.println("[" + start + "][TWEET][" + id + "] GET /tweet/" + id);
-        JsonNode response = twitterService.getTweet(id);
+        TweetDto response = twitterService.getTweet(id);
         System.out.println("[" + System.currentTimeMillis() + "][TWEET][" + id + "] " + response);
         return response;
     }
@@ -60,7 +60,7 @@ public class TwitterController {
     @Operation(summary = "Get user by ID", description = "Fetches a Twitter user by their ID.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "User found",
-                    content = @Content(schema = @Schema(implementation = UserResponse.class))),
+                    content = @Content(schema = @Schema(implementation = AuthorDto.class))),
             @ApiResponse(responseCode = "401", description = "Missing API key",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = "{\"error\": \"Missing x-api-key header\"}"))),
@@ -71,10 +71,10 @@ public class TwitterController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = "{\"error\": \"User not found: 123456789\"}")))
     })
-    public JsonNode getUser(@Parameter(description = "User ID") @PathVariable String id) {
+    public AuthorDto getUser(@Parameter(description = "User ID") @PathVariable String id) {
         long start = System.currentTimeMillis();
         System.out.println("[" + start + "][USER][" + id + "] GET /user/" + id);
-        JsonNode response = twitterService.getUser(id);
+        AuthorDto response = twitterService.getUser(id);
         System.out.println("[" + System.currentTimeMillis() + "][USER][" + id + "] " + response);
         return response;
     }
