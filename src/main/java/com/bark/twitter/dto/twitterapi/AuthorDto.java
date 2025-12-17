@@ -1,6 +1,7 @@
 package com.bark.twitter.dto.twitterapi;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 import java.util.Map;
@@ -15,7 +16,7 @@ public record AuthorDto(
         String url,
         String description,
         UserEntitiesDto entities,
-        boolean isProtected,
+        @JsonProperty("protected") boolean isProtected,
         boolean isVerified,
         boolean isBlueVerified,
         String verifiedType,
@@ -41,7 +42,7 @@ public record AuthorDto(
     }
 
     public static class Builder {
-        private String type = "user";
+        private String type;
         private String id;
         private String name;
         private String userName;

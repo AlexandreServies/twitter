@@ -145,12 +145,23 @@ public class SynopticToTwitterApiMapper {
                 .id(getText(synopticTweet, "user_id"))
                 .name(getText(synopticTweet, "name"))
                 .userName(screenName)
+                .location("") // TODO: Not available in Synoptic tweet data
                 .description(description)
+                .isProtected(false) // TODO: Not available in Synoptic
+                .isVerified(false) // TODO: Legacy verification not available
                 .isBlueVerified(getBool(synopticTweet, "is_blue_verified"))
                 .verifiedType(getTextOrNull(synopticTweet, "verified_type"))
                 .followers(getInt(synopticTweet, "followers_count"))
+                .following(0) // Not available in Synoptic tweet data
+                .favouritesCount(0) // Not available in Synoptic
                 .statusesCount(getInt(synopticTweet, "statuses_count"))
+                .mediaCount(0) // Not available in Synoptic
+                .createdAt("") // Not available in Synoptic tweet data
                 .profilePicture(getText(synopticTweet, "logo"))
+                .canDm(false) // Not available in Synoptic
+                .affiliatesHighlightedLabel(Map.of())
+                .isAutomated(false) // Not available in Synoptic
+                .pinnedTweetIds(List.of()) // Not available in Synoptic
                 .twitterUrl("https://twitter.com/" + screenName)
                 .profileBio(ProfileBioDto.from(description))
                 .build();
@@ -176,30 +187,30 @@ public class SynopticToTwitterApiMapper {
         String createdAt = convertTwitterDateToIso(getText(synopticUser, "created_at"));
 
         return AuthorDto.builder()
-                .type("user")
                 .id(getText(synopticUser, "user_id"))
                 .name(getText(synopticUser, "name"))
                 .userName(screenName)
                 .location(getText(synopticUser, "location"))
+                .url(null) // TODO: Not available in Synoptic
                 .description(description)
-                .entities(UserEntitiesDto.empty()) // URL entities not available in Synoptic
-                .isProtected(false) // Not available in Synoptic
-                .isVerified(false) // Legacy verification not available in Synoptic
+                .entities(UserEntitiesDto.empty())
+                .isProtected(false) // TODO: Not available in Synoptic
+                .isVerified(false) // TODO: Legacy verification not available in Synoptic
                 .isBlueVerified(getBool(synopticUser, "is_blue_verified"))
                 .verifiedType(getTextOrNull(synopticUser, "verified_type"))
                 .followers(getInt(synopticUser, "followers_count"))
                 .following(getInt(synopticUser, "following_count"))
-                .favouritesCount(0) // Not available in Synoptic
+                .favouritesCount(0) // TODO: Not available in Synoptic
                 .statusesCount(getInt(synopticUser, "statuses_count"))
-                .mediaCount(0) // Not available in Synoptic
+                .mediaCount(0) // TODO: Not available in Synoptic
                 .createdAt(createdAt)
+                .coverPicture(null) // TODO: Not available in Synoptic
                 .profilePicture(profilePicture)
-                .canDm(false) // Not available in Synoptic
+                .canDm(false) // TODO: Not available in Synoptic
                 .affiliatesHighlightedLabel(Map.of())
-                .isAutomated(false) // Not available in Synoptic
-                .pinnedTweetIds(List.of()) // Not available in Synoptic
-                .twitterUrl("https://twitter.com/" + screenName)
-                .profileBio(ProfileBioDto.from(description))
+                .isAutomated(false) // TODO: Not available in Synoptic
+                .automatedBy(null)
+                .pinnedTweetIds(List.of()) // TODO: Not available in Synoptic
                 .build();
     }
 

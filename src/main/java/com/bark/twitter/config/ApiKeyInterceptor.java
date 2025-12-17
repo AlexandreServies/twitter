@@ -2,6 +2,7 @@ package com.bark.twitter.config;
 
 import com.bark.twitter.exception.ForbiddenException;
 import com.bark.twitter.exception.UnauthorizedException;
+import com.bark.twitter.usage.UsageTrackingService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
@@ -11,11 +12,14 @@ import org.springframework.web.servlet.HandlerInterceptor;
 public class ApiKeyInterceptor implements HandlerInterceptor {
 
     private static final String API_KEY_HEADER = "x-api-key";
+    public static final String API_KEY_ATTRIBUTE = "apiKey";
 
     private final SecurityConfig securityConfig;
+    private final UsageTrackingService usageTrackingService;
 
-    public ApiKeyInterceptor(SecurityConfig securityConfig) {
+    public ApiKeyInterceptor(SecurityConfig securityConfig, UsageTrackingService usageTrackingService) {
         this.securityConfig = securityConfig;
+        this.usageTrackingService = usageTrackingService;
     }
 
     @Override
@@ -41,6 +45,26 @@ public class ApiKeyInterceptor implements HandlerInterceptor {
             throw new ForbiddenException("Invalid API key");
         }
 
+        // Store API key in request for /usage endpoint access
+        request.setAttribute(API_KEY_ATTRIBUTE, apiKey);
+
+        // Track usage asynchronously - zero latency impact (skip /usage endpoint)
+        if (!path.equals("/usage")) {
+            String endpoint = normalizeEndpoint(path);
+            usageTrackingService.recordCall(apiKey, endpoint);
+        }
+
         return true;
+    }
+
+    /**
+     * Normalizes endpoint path to group by base endpoint.
+     * e.g., /tweet/123 -> /tweet, /user/456 -> /user
+     */
+    private String normalizeEndpoint(String path) {
+        if (path.startsWith("/tweet/")) return "/tweet";
+        if (path.startsWith("/user/")) return "/user";
+        if (path.startsWith("/community/")) return "/community";
+        return path;
     }
 }
