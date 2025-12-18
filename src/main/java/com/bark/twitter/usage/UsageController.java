@@ -45,14 +45,14 @@ public class UsageController {
     private UsageResponse aggregateUsage(List<UsageRecord> records) {
         // Structure: endpoint -> day -> hour -> count
         Map<String, Map<String, Map<String, Long>>> aggregated = new HashMap<>();
-        long totalRequests = 0;
+        long total = 0;
 
         for (UsageRecord record : records) {
             String endpoint = record.endpoint();
             String minuteBucket = record.minuteBucket(); // Format: 2025-12-17T10:30
             long count = record.count();
 
-            totalRequests += count;
+            total += count;
 
             // Parse day and hour from minute bucket
             String day = minuteBucket.substring(0, 10);  // 2025-12-17
@@ -87,6 +87,6 @@ public class UsageController {
             endpoints.put(endpoint, new UsageResponse.EndpointUsage(endpointTotal, days));
         }
 
-        return new UsageResponse(totalRequests, endpoints);
+        return new UsageResponse(total, endpoints);
     }
 }

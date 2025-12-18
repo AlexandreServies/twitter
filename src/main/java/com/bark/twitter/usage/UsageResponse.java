@@ -7,7 +7,7 @@ import java.util.Map;
  * Provides usage breakdown by endpoint, day, and hour.
  */
 public record UsageResponse(
-        long totalRequests,
+        long total,
         Map<String, EndpointUsage> endpoints
 ) {
 

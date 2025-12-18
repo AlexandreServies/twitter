@@ -5,7 +5,9 @@ import com.bark.twitter.dto.ErrorResponse;
 import com.bark.twitter.dto.twitterapi.AuthorDto;
 import com.bark.twitter.dto.twitterapi.TweetDto;
 import com.bark.twitter.service.TwitterService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -28,9 +30,19 @@ import java.util.Map;
 public class TwitterController {
 
     private final TwitterService twitterService;
+    private final ObjectMapper objectMapper;
 
-    public TwitterController(TwitterService twitterService) {
+    public TwitterController(TwitterService twitterService, ObjectMapper objectMapper) {
         this.twitterService = twitterService;
+        this.objectMapper = objectMapper;
+    }
+
+    private String toJson(Object obj) {
+        try {
+            return objectMapper.writeValueAsString(obj);
+        } catch (JsonProcessingException e) {
+            return obj.toString();
+        }
     }
 
     @GetMapping("/tweet/{id}")
@@ -52,7 +64,7 @@ public class TwitterController {
         long start = System.currentTimeMillis();
         System.out.println("[" + start + "][TWEET][" + id + "] GET /tweet/" + id);
         TweetDto response = twitterService.getTweet(id);
-        System.out.println("[" + System.currentTimeMillis() + "][TWEET][" + id + "] " + response);
+        System.out.println("[" + System.currentTimeMillis() + "][TWEET][" + id + "] " + toJson(response));
         return response;
     }
 
@@ -75,7 +87,7 @@ public class TwitterController {
         long start = System.currentTimeMillis();
         System.out.println("[" + start + "][USER][" + id + "] GET /user/" + id);
         AuthorDto response = twitterService.getUser(id);
-        System.out.println("[" + System.currentTimeMillis() + "][USER][" + id + "] " + response);
+        System.out.println("[" + System.currentTimeMillis() + "][USER][" + id + "] " + toJson(response));
         return response;
     }
 
@@ -98,7 +110,7 @@ public class TwitterController {
         long start = System.currentTimeMillis();
         System.out.println("[" + start + "][COMMUNITY][" + id + "] GET /community/" + id);
         JsonNode response = twitterService.getCommunity(id);
-        System.out.println("[" + System.currentTimeMillis() + "][COMMUNITY][" + id + "] " + response);
+        System.out.println("[" + System.currentTimeMillis() + "][COMMUNITY][" + id + "] " + toJson(response));
         return response;
     }
 
