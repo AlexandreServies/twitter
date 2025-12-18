@@ -2,8 +2,8 @@ package com.bark.twitter.controller;
 
 import com.bark.twitter.dto.CommunityResponse;
 import com.bark.twitter.dto.ErrorResponse;
+import com.bark.twitter.dto.axion.AxionTweetDto;
 import com.bark.twitter.dto.twitterapi.AuthorDto;
-import com.bark.twitter.dto.twitterapi.TweetDto;
 import com.bark.twitter.service.TwitterService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -49,7 +49,7 @@ public class TwitterController {
     @Operation(summary = "Get tweet by ID", description = "Fetches a tweet by its ID.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Tweet found",
-                    content = @Content(schema = @Schema(implementation = TweetDto.class))),
+                    content = @Content(schema = @Schema(implementation = AxionTweetDto.class))),
             @ApiResponse(responseCode = "401", description = "Missing API key",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = "{\"error\": \"Missing x-api-key header\"}"))),
@@ -60,10 +60,10 @@ public class TwitterController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = "{\"error\": \"Tweet not found: 123456789\"}")))
     })
-    public TweetDto getTweet(@Parameter(description = "Tweet ID") @PathVariable String id) {
+    public AxionTweetDto getTweet(@Parameter(description = "Tweet ID") @PathVariable String id) {
         long start = System.currentTimeMillis();
         System.out.println("[" + start + "][TWEET][" + id + "] GET /tweet/" + id);
-        TweetDto response = twitterService.getTweet(id);
+        AxionTweetDto response = twitterService.getTweet(id);
         System.out.println("[" + System.currentTimeMillis() + "][TWEET][" + id + "] " + toJson(response));
         return response;
     }

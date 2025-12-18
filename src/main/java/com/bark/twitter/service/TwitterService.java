@@ -2,9 +2,10 @@ package com.bark.twitter.service;
 
 import com.bark.twitter.client.SynopticClient;
 import com.bark.twitter.client.TwitterApiClient;
+import com.bark.twitter.dto.axion.AxionTweetDto;
 import com.bark.twitter.dto.twitterapi.AuthorDto;
-import com.bark.twitter.dto.twitterapi.TweetDto;
 import com.bark.twitter.exception.NotFoundException;
+import com.bark.twitter.mapper.SynopticToAxionMapper;
 import com.bark.twitter.mapper.SynopticToTwitterApiMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -17,23 +18,26 @@ public class TwitterService {
 
     private final SynopticClient synopticClient;
     private final TwitterApiClient twitterApiClient;
-    private final SynopticToTwitterApiMapper mapper;
+    private final SynopticToTwitterApiMapper twitterApiMapper;
+    private final SynopticToAxionMapper axionMapper;
     private final Cache tweetsCache;
     private final Cache usersCache;
     private final Cache communitiesCache;
 
     public TwitterService(SynopticClient synopticClient, TwitterApiClient twitterApiClient,
-                          SynopticToTwitterApiMapper mapper, CacheManager cacheManager) {
+                          SynopticToTwitterApiMapper twitterApiMapper, SynopticToAxionMapper axionMapper,
+                          CacheManager cacheManager) {
         this.synopticClient = synopticClient;
         this.twitterApiClient = twitterApiClient;
-        this.mapper = mapper;
+        this.twitterApiMapper = twitterApiMapper;
+        this.axionMapper = axionMapper;
         this.tweetsCache = cacheManager.getCache("tweets");
         this.usersCache = cacheManager.getCache("users");
         this.communitiesCache = cacheManager.getCache("communities");
     }
 
-    public TweetDto getTweet(String tweetId) {
-        TweetDto cached = tweetsCache.get(tweetId, TweetDto.class);
+    public AxionTweetDto getTweet(String tweetId) {
+        AxionTweetDto cached = tweetsCache.get(tweetId, AxionTweetDto.class);
         if (cached != null) {
             System.out.println("[" + System.currentTimeMillis() + "][TWEET][" + tweetId + "] Cache hit");
             return cached;
@@ -45,7 +49,7 @@ public class TwitterService {
         JsonNode transformed = transformMedia(synopticTweet);
         JsonNode enriched = enrichReplyData(transformed);
 
-        TweetDto tweetDto = mapper.mapTweet(enriched);
+        AxionTweetDto tweetDto = axionMapper.mapTweet(enriched);
         tweetsCache.put(tweetId, tweetDto);
         return tweetDto;
     }
@@ -102,7 +106,7 @@ public class TwitterService {
         JsonNode synopticUser = synopticClient.getUser(userId)
                 .orElseThrow(() -> new NotFoundException("User not found: " + userId));
 
-        AuthorDto userDto = mapper.mapUser(synopticUser);
+        AuthorDto userDto = twitterApiMapper.mapUser(synopticUser);
         usersCache.put(userId, userDto);
         return userDto;
     }
