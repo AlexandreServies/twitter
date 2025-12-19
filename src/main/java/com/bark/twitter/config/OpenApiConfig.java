@@ -3,6 +3,7 @@ package com.bark.twitter.config;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,10 +19,11 @@ public class OpenApiConfig {
                                 .type(SecurityScheme.Type.APIKEY)
                                 .in(SecurityScheme.In.HEADER)
                                 .name("x-api-key")
-                                .description("API key for authentication")))
+                                .description("API key for authentication. Required for all endpoints.")))
+                .addSecurityItem(new SecurityRequirement().addList("apiKey"))
                 .info(new Info()
                         .title("Twitter Data Relay API")
                         .version("1.0")
-                        .description("Lightweight service for fetching Twitter tweets, users, and communities."));
+                        .description("Lightweight service for fetching Twitter tweets, users, and communities. All endpoints require an x-api-key header."));
     }
 }

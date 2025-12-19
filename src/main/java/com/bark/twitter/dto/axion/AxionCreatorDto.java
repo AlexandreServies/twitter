@@ -25,7 +25,7 @@ public record AxionCreatorDto(
         private String profileBannerUrl = "";
         private String profileImageUrlHttps;
         private boolean isBlueVerified;
-        private String verifiedType;
+        private String verifiedType = "";
         private int followersCount;
         private int followingCount;
 
