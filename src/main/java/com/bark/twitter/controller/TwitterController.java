@@ -1,12 +1,11 @@
 package com.bark.twitter.controller;
 
-import com.bark.twitter.dto.CommunityResponse;
 import com.bark.twitter.dto.ErrorResponse;
+import com.bark.twitter.dto.axion.AxionCommunityDto;
 import com.bark.twitter.dto.axion.AxionTweetDto;
-import com.bark.twitter.dto.twitterapi.AuthorDto;
+import com.bark.twitter.dto.axion.AxionUserInfoDto;
 import com.bark.twitter.service.TwitterService;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -72,7 +71,7 @@ public class TwitterController {
     @Operation(summary = "Get user by ID", description = "Fetches a Twitter user by their ID.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "User found",
-                    content = @Content(schema = @Schema(implementation = AuthorDto.class))),
+                    content = @Content(schema = @Schema(implementation = AxionUserInfoDto.class))),
             @ApiResponse(responseCode = "401", description = "Missing API key",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = "{\"error\": \"Missing x-api-key header\"}"))),
@@ -83,10 +82,10 @@ public class TwitterController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = "{\"error\": \"User not found: 123456789\"}")))
     })
-    public AuthorDto getUser(@Parameter(description = "User ID") @PathVariable String id) {
+    public AxionUserInfoDto getUser(@Parameter(description = "User ID") @PathVariable String id) {
         long start = System.currentTimeMillis();
         System.out.println("[" + start + "][USER][" + id + "] GET /user/" + id);
-        AuthorDto response = twitterService.getUser(id);
+        AxionUserInfoDto response = twitterService.getUser(id);
         System.out.println("[" + System.currentTimeMillis() + "][USER][" + id + "] " + toJson(response));
         return response;
     }
@@ -95,7 +94,7 @@ public class TwitterController {
     @Operation(summary = "Get community by ID", description = "Fetches a Twitter community by its ID.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Community found",
-                    content = @Content(schema = @Schema(implementation = CommunityResponse.class))),
+                    content = @Content(schema = @Schema(implementation = AxionCommunityDto.class))),
             @ApiResponse(responseCode = "401", description = "Missing API key",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = "{\"error\": \"Missing x-api-key header\"}"))),
@@ -106,10 +105,10 @@ public class TwitterController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = "{\"error\": \"Community not found: 123456789\"}")))
     })
-    public JsonNode getCommunity(@Parameter(description = "Community ID") @PathVariable String id) {
+    public AxionCommunityDto getCommunity(@Parameter(description = "Community ID") @PathVariable String id) {
         long start = System.currentTimeMillis();
         System.out.println("[" + start + "][COMMUNITY][" + id + "] GET /community/" + id);
-        JsonNode response = twitterService.getCommunity(id);
+        AxionCommunityDto response = twitterService.getCommunity(id);
         System.out.println("[" + System.currentTimeMillis() + "][COMMUNITY][" + id + "] " + toJson(response));
         return response;
     }

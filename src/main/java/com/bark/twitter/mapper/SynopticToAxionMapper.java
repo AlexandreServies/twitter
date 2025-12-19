@@ -305,4 +305,58 @@ public class SynopticToAxionMapper {
         }
         return node.get(field).asBoolean(false);
     }
+
+    /**
+     * Maps a Synoptic user JsonNode to an AxionUserInfoDto (for /user endpoint).
+     */
+    public AxionUserInfoDto mapUser(JsonNode synopticUser) {
+        String screenName = getText(synopticUser, "screen_name");
+        String description = getText(synopticUser, "bio");
+        if (description.isEmpty()) {
+            description = getText(synopticUser, "description");
+        }
+
+        // Get profile image URL - try multiple field names
+        String profilePicture = getText(synopticUser, "profile_image_url");
+        if (profilePicture.isEmpty()) {
+            profilePicture = getText(synopticUser, "logo");
+        }
+
+        // Convert createdAt from Twitter format to ISO format
+        String createdAt = convertTwitterDateToIso(getText(synopticUser, "created_at"));
+
+        return AxionUserInfoDto.builder()
+                .userName(screenName)
+                .name(getText(synopticUser, "name"))
+                .isBlueVerified(getBool(synopticUser, "is_blue_verified"))
+                .verifiedType(getTextOrNull(synopticUser, "verified_type"))
+                .profilePicture(profilePicture)
+                .coverImage("") // TODO: Not available in Synoptic
+                .description(description)
+                .location(getText(synopticUser, "location"))
+                .followers(getInt(synopticUser, "followers_count"))
+                .following(getInt(synopticUser, "following_count"))
+                .createdAt(createdAt)
+                .isAutomated(false) // TODO: Not available in Synoptic
+                .bioDescription("") // Empty as per Axion examples
+                .badgeInfo(null) // TODO: Not available in Synoptic
+                .build();
+    }
+
+    /**
+     * Converts Twitter date format "Sat Apr 20 04:51:51 +0000 2024" to ISO format "2024-04-20T04:51:51.000000Z".
+     */
+    private String convertTwitterDateToIso(String twitterDate) {
+        if (twitterDate == null || twitterDate.isEmpty()) {
+            return "";
+        }
+        try {
+            java.time.format.DateTimeFormatter inputFormatter = java.time.format.DateTimeFormatter
+                    .ofPattern("EEE MMM dd HH:mm:ss Z yyyy", Locale.ENGLISH);
+            java.time.ZonedDateTime zdt = java.time.ZonedDateTime.parse(twitterDate, inputFormatter);
+            return zdt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'"));
+        } catch (Exception e) {
+            return twitterDate; // Return original if parsing fails
+        }
+    }
 }
