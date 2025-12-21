@@ -6,7 +6,7 @@ import com.bark.twitter.dto.axion.AxionCommunityDto;
 import com.bark.twitter.dto.axion.AxionTweetDto;
 import com.bark.twitter.dto.axion.AxionUserInfoDto;
 import com.bark.twitter.exception.NotFoundException;
-import com.bark.twitter.mapper.SynopticToAxionMapper;
+import com.bark.twitter.mapper.SynopticToAxiomMapper;
 import com.bark.twitter.mapper.SynopticToTwitterApiMapper;
 import com.bark.twitter.mapper.TwitterApiToAxionCommunityMapper;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -21,19 +21,19 @@ public class TwitterService {
     private final SynopticClient synopticClient;
     private final TwitterApiClient twitterApiClient;
     private final SynopticToTwitterApiMapper twitterApiMapper;
-    private final SynopticToAxionMapper axionMapper;
+    private final SynopticToAxiomMapper axiomMapper;
     private final TwitterApiToAxionCommunityMapper communityMapper;
     private final Cache tweetsCache;
     private final Cache usersCache;
     private final Cache communitiesCache;
 
     public TwitterService(SynopticClient synopticClient, TwitterApiClient twitterApiClient,
-                          SynopticToTwitterApiMapper twitterApiMapper, SynopticToAxionMapper axionMapper,
+                          SynopticToTwitterApiMapper twitterApiMapper, SynopticToAxiomMapper axiomMapper,
                           TwitterApiToAxionCommunityMapper communityMapper, CacheManager cacheManager) {
         this.synopticClient = synopticClient;
         this.twitterApiClient = twitterApiClient;
         this.twitterApiMapper = twitterApiMapper;
-        this.axionMapper = axionMapper;
+        this.axiomMapper = axiomMapper;
         this.communityMapper = communityMapper;
         this.tweetsCache = cacheManager.getCache("tweets");
         this.usersCache = cacheManager.getCache("users");
@@ -53,7 +53,7 @@ public class TwitterService {
         JsonNode transformed = transformMedia(synopticTweet);
         JsonNode enriched = enrichReplyData(transformed);
 
-        AxionTweetDto tweetDto = axionMapper.mapTweet(enriched);
+        AxionTweetDto tweetDto = axiomMapper.mapTweet(enriched);
         tweetsCache.put(tweetId, tweetDto);
         return tweetDto;
     }
@@ -110,7 +110,7 @@ public class TwitterService {
         JsonNode synopticUser = synopticClient.getUser(userId)
                 .orElseThrow(() -> new NotFoundException("User not found: " + userId));
 
-        AxionUserInfoDto userDto = axionMapper.mapUser(synopticUser);
+        AxionUserInfoDto userDto = axiomMapper.mapUser(synopticUser);
         usersCache.put(userId, userDto);
         return userDto;
     }
@@ -126,7 +126,7 @@ public class TwitterService {
         JsonNode synopticUser = synopticClient.getUserByUsername(username)
                 .orElseThrow(() -> new NotFoundException("User not found: @" + username));
 
-        AxionUserInfoDto userDto = axionMapper.mapUser(synopticUser);
+        AxionUserInfoDto userDto = axiomMapper.mapUser(synopticUser);
         usersCache.put(cacheKey, userDto);
         return userDto;
     }

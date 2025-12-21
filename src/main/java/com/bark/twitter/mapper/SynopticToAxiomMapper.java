@@ -15,7 +15,7 @@ import java.util.Locale;
  * Mapper that transforms Synoptic API responses to Axion format.
  */
 @Component
-public class SynopticToAxionMapper {
+public class SynopticToAxiomMapper {
 
     private static final DateTimeFormatter TWITTER_DATE_FORMAT = DateTimeFormatter
             .ofPattern("EEE MMM dd HH:mm:ss Z yyyy", Locale.ENGLISH)
