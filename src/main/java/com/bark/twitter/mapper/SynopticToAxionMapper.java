@@ -125,18 +125,29 @@ public class SynopticToAxionMapper {
         String screenName = getText(synopticTweet, "screen_name");
         String description = getText(synopticTweet, "bio");
 
+        // Extract user_extended_info fields
+        JsonNode extendedInfo = synopticTweet.get("user_extended_info");
+        String location = "";
+        String coverImage = "";
+        String createdAt = "";
+        if (extendedInfo != null && !extendedInfo.isNull()) {
+            location = getText(extendedInfo, "location");
+            coverImage = getText(extendedInfo, "profile_banner_url");
+            createdAt = getText(extendedInfo, "created_at"); // Keep Twitter format for tweet's userInfo
+        }
+
         return AxionUserInfoDto.builder()
                 .userName(screenName)
                 .name(getText(synopticTweet, "name"))
                 .isBlueVerified(getBool(synopticTweet, "is_blue_verified"))
                 .verifiedType(getTextOrNull(synopticTweet, "verified_type"))
                 .profilePicture(getText(synopticTweet, "logo"))
-                .coverImage("") // Not available in Synoptic tweet data
+                .coverImage(coverImage)
                 .description(description)
-                .location("") // Not available in Synoptic tweet data
+                .location(location)
                 .followers(getInt(synopticTweet, "followers_count"))
                 .following(0) // Not available in Synoptic tweet data
-                .createdAt("") // Not available in Synoptic tweet data
+                .createdAt(createdAt)
                 .isAutomated(false) // Not available in Synoptic
                 .bioDescription(description)
                 .badgeInfo(null) // TODO: Not available in Synoptic
@@ -331,13 +342,13 @@ public class SynopticToAxionMapper {
                 .isBlueVerified(getBool(synopticUser, "is_blue_verified"))
                 .verifiedType(getTextOrNull(synopticUser, "verified_type"))
                 .profilePicture(profilePicture)
-                .coverImage("") // TODO: Not available in Synoptic
+                .coverImage(getText(synopticUser, "profile_banner_url"))
                 .description(description)
                 .location(getText(synopticUser, "location"))
                 .followers(getInt(synopticUser, "followers_count"))
                 .following(getInt(synopticUser, "following_count"))
                 .createdAt(createdAt)
-                .isAutomated(false) // TODO: Not available in Synoptic
+                .isAutomated(false) // Not available in Synoptic
                 .bioDescription("") // Empty as per Axion examples
                 .badgeInfo(null) // TODO: Not available in Synoptic
                 .build();

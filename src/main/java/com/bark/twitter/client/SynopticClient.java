@@ -62,6 +62,29 @@ public class SynopticClient {
         }
     }
 
+    public Optional<JsonNode> getUserByUsername(String username) {
+        try {
+            JsonNode response = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/users/lookup")
+                            .queryParam("screen_name", username)
+                            .build())
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .block();
+
+            Optional<JsonNode> result = extractFirstFromData(response);
+            System.out.println("[" + System.currentTimeMillis() + "][SYNOPTIC][@" + username + "] " + (result.isPresent() ? result.get() : "Not found"));
+            return result;
+        } catch (WebClientResponseException e) {
+            System.out.println("[ERROR] Error fetching user @" + username + ": " + e.getStatusCode() + " " + e.getMessage());
+            return Optional.empty();
+        } catch (Exception e) {
+            System.out.println("[ERROR] Error fetching user @" + username + ": " + e.getMessage());
+            return Optional.empty();
+        }
+    }
+
     private Optional<JsonNode> extractFirstFromData(JsonNode response) {
         if (response == null) {
             return Optional.empty();

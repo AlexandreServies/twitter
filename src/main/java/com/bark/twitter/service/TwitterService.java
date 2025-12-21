@@ -115,6 +115,22 @@ public class TwitterService {
         return userDto;
     }
 
+    public AxionUserInfoDto getUserByUsername(String username) {
+        String cacheKey = "username:" + username;
+        AxionUserInfoDto cached = usersCache.get(cacheKey, AxionUserInfoDto.class);
+        if (cached != null) {
+            System.out.println("[" + System.currentTimeMillis() + "][USER][@" + username + "] Cache hit");
+            return cached;
+        }
+
+        JsonNode synopticUser = synopticClient.getUserByUsername(username)
+                .orElseThrow(() -> new NotFoundException("User not found: @" + username));
+
+        AxionUserInfoDto userDto = axionMapper.mapUser(synopticUser);
+        usersCache.put(cacheKey, userDto);
+        return userDto;
+    }
+
     public AxionCommunityDto getCommunity(String communityId) {
         AxionCommunityDto cached = communitiesCache.get(communityId, AxionCommunityDto.class);
         if (cached != null) {

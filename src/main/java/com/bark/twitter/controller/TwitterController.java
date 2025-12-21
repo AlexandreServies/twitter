@@ -67,8 +67,8 @@ public class TwitterController {
         return response;
     }
 
-    @GetMapping("/user/{id}")
-    @Operation(summary = "Get user by ID", description = "Fetches a Twitter user by their ID.")
+    @GetMapping("/user/{idOrHandle}")
+    @Operation(summary = "Get user by ID or handle", description = "Fetches a Twitter user by their numeric ID or username (handle).")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "User found",
                     content = @Content(schema = @Schema(implementation = AxionUserInfoDto.class))),
@@ -82,12 +82,26 @@ public class TwitterController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = "{\"error\": \"User not found: 123456789\"}")))
     })
-    public AxionUserInfoDto getUser(@Parameter(description = "User ID") @PathVariable String id) {
+    public AxionUserInfoDto getUser(@Parameter(description = "User ID or handle (username)") @PathVariable String idOrHandle) {
         long start = System.currentTimeMillis();
-        System.out.println("[" + start + "][USER][" + id + "] GET /user/" + id);
-        AxionUserInfoDto response = twitterService.getUser(id);
-        System.out.println("[" + System.currentTimeMillis() + "][USER][" + id + "] " + toJson(response));
+        System.out.println("[" + start + "][USER][" + idOrHandle + "] GET /user/" + idOrHandle);
+        AxionUserInfoDto response = isNumeric(idOrHandle)
+                ? twitterService.getUser(idOrHandle)
+                : twitterService.getUserByUsername(idOrHandle);
+        System.out.println("[" + System.currentTimeMillis() + "][USER][" + idOrHandle + "] " + toJson(response));
         return response;
+    }
+
+    private boolean isNumeric(String str) {
+        if (str == null || str.isEmpty()) {
+            return false;
+        }
+        for (char c : str.toCharArray()) {
+            if (!Character.isDigit(c)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @GetMapping("/community/{id}")
