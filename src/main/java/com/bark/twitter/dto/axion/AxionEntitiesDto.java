@@ -1,15 +1,17 @@
 package com.bark.twitter.dto.axion;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
 
+@Schema(description = "Tweet entities containing hashtags, URLs, mentions, and symbols")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record AxionEntitiesDto(
-        List<AxionHashtagDto> hashtags,
-        List<AxionUrlEntityDto> urls,
-        List<AxionUserMentionDto> userMentions,
-        List<AxionSymbolDto> symbols
+        @Schema(description = "Hashtags in the tweet") List<AxionHashtagDto> hashtags,
+        @Schema(description = "URLs in the tweet") List<AxionUrlEntityDto> urls,
+        @Schema(description = "User mentions in the tweet") List<AxionUserMentionDto> userMentions,
+        @Schema(description = "Cashtag symbols in the tweet") List<AxionSymbolDto> symbols
 ) {
     public static AxionEntitiesDto empty() {
         return new AxionEntitiesDto(List.of(), List.of(), List.of(), List.of());

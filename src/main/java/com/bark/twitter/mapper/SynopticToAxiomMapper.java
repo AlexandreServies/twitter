@@ -136,6 +136,13 @@ public class SynopticToAxiomMapper {
             createdAt = getText(extendedInfo, "created_at"); // Keep Twitter format for tweet's userInfo
         }
 
+        // Extract following_count from user_profile
+        int following = 0;
+        JsonNode userProfile = synopticTweet.get("user_profile");
+        if (userProfile != null && !userProfile.isNull()) {
+            following = getInt(userProfile, "following_count");
+        }
+
         return AxionUserInfoDto.builder()
                 .userName(screenName)
                 .name(getText(synopticTweet, "name"))
@@ -146,7 +153,7 @@ public class SynopticToAxiomMapper {
                 .description(description)
                 .location(location)
                 .followers(getInt(synopticTweet, "followers_count"))
-                .following(0) // Not available in Synoptic tweet data
+                .following(following)
                 .createdAt(createdAt)
                 .isAutomated(false) // Not available in Synoptic
                 .bioDescription(description)
@@ -158,16 +165,25 @@ public class SynopticToAxiomMapper {
      * Maps entities from a Synoptic tweet.
      */
     private AxionEntitiesDto mapEntities(JsonNode synopticTweet) {
+        String text = getText(synopticTweet, "text");
         List<AxionUrlEntityDto> urls = new ArrayList<>();
         List<AxionHashtagDto> hashtags = new ArrayList<>();
         List<AxionUserMentionDto> userMentions = new ArrayList<>();
+        List<AxionSymbolDto> symbols = new ArrayList<>();
 
-        // Map URLs from Synoptic's urls array
+        // Extract all t.co URLs from text in order
+        List<TcoUrlMatch> tcoMatches = extractTcoUrls(text);
+
+        // Map URLs from Synoptic's urls array, matching with t.co URLs by position
         if (synopticTweet.has("urls") && synopticTweet.get("urls").isArray()) {
+            int urlIndex = 0;
             for (JsonNode urlNode : synopticTweet.get("urls")) {
                 String expandedUrl = urlNode.asText();
                 if (expandedUrl != null && !expandedUrl.isEmpty()) {
-                    urls.add(AxionUrlEntityDto.from(expandedUrl));
+                    // Match with t.co URL by position (assumes same order)
+                    TcoUrlMatch tcoMatch = urlIndex < tcoMatches.size() ? tcoMatches.get(urlIndex) : null;
+                    urls.add(createUrlEntity(expandedUrl, tcoMatch));
+                    urlIndex++;
                 }
             }
         }
@@ -177,7 +193,8 @@ public class SynopticToAxiomMapper {
             for (JsonNode hashtagNode : synopticTweet.get("hashtags")) {
                 String tag = hashtagNode.asText();
                 if (tag != null && !tag.isEmpty()) {
-                    hashtags.add(new AxionHashtagDto(List.of(), tag));
+                    List<Integer> indices = findIndicesInText(text, "#" + tag);
+                    hashtags.add(new AxionHashtagDto(indices, tag));
                 }
             }
         }
@@ -187,17 +204,108 @@ public class SynopticToAxiomMapper {
             for (JsonNode mentionNode : synopticTweet.get("mentions")) {
                 String screenName = mentionNode.asText();
                 if (screenName != null && !screenName.isEmpty()) {
-                    userMentions.add(new AxionUserMentionDto("", List.of(), "", screenName));
+                    List<Integer> indices = findIndicesInText(text, "@" + screenName);
+                    userMentions.add(new AxionUserMentionDto("", indices, "", screenName));
                 }
             }
         }
+
+        // Extract symbols/cashtags by parsing the tweet text
+        symbols = extractSymbolsFromText(text);
 
         return AxionEntitiesDto.builder()
                 .hashtags(hashtags)
                 .urls(urls)
                 .userMentions(userMentions)
-                .symbols(List.of())
+                .symbols(symbols)
                 .build();
+    }
+
+    private record TcoUrlMatch(String url, int start, int end) {}
+
+    /**
+     * Extracts all t.co URLs from text with their positions.
+     */
+    private List<TcoUrlMatch> extractTcoUrls(String text) {
+        List<TcoUrlMatch> matches = new ArrayList<>();
+        if (text == null) return matches;
+
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("https://t\\.co/[a-zA-Z0-9]+");
+        java.util.regex.Matcher matcher = pattern.matcher(text);
+
+        while (matcher.find()) {
+            matches.add(new TcoUrlMatch(matcher.group(), matcher.start(), matcher.end()));
+        }
+        return matches;
+    }
+
+    /**
+     * Creates a URL entity from expanded URL and optional t.co match.
+     */
+    private AxionUrlEntityDto createUrlEntity(String expandedUrl, TcoUrlMatch tcoMatch) {
+        String displayUrl = createDisplayUrl(expandedUrl);
+
+        if (tcoMatch != null) {
+            List<Integer> indices = List.of(tcoMatch.start(), tcoMatch.end());
+            return new AxionUrlEntityDto(displayUrl, expandedUrl, indices, tcoMatch.url());
+        }
+
+        return new AxionUrlEntityDto(displayUrl, expandedUrl, List.of(), expandedUrl);
+    }
+
+    /**
+     * Creates a shortened display URL from an expanded URL.
+     */
+    private String createDisplayUrl(String expandedUrl) {
+        String display = expandedUrl;
+        if (display.startsWith("https://")) {
+            display = display.substring(8);
+        } else if (display.startsWith("http://")) {
+            display = display.substring(7);
+        }
+        if (display.startsWith("www.")) {
+            display = display.substring(4);
+        }
+        // Truncate long URLs
+        if (display.length() > 30) {
+            display = display.substring(0, 27) + "…";
+        }
+        return display;
+    }
+
+    /**
+     * Finds the start and end indices of a substring in text.
+     */
+    private List<Integer> findIndicesInText(String text, String substring) {
+        if (text == null || substring == null) {
+            return List.of();
+        }
+        int start = text.indexOf(substring);
+        if (start >= 0) {
+            return List.of(start, start + substring.length());
+        }
+        return List.of();
+    }
+
+    /**
+     * Extracts cashtag symbols ($WORD) from tweet text.
+     */
+    private List<AxionSymbolDto> extractSymbolsFromText(String text) {
+        List<AxionSymbolDto> symbols = new ArrayList<>();
+        if (text == null || text.isEmpty()) {
+            return symbols;
+        }
+
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\$([a-zA-Z][a-zA-Z0-9]*)");
+        java.util.regex.Matcher matcher = pattern.matcher(text);
+
+        while (matcher.find()) {
+            String symbolText = matcher.group(1);
+            List<Integer> indices = List.of(matcher.start(), matcher.end());
+            symbols.add(new AxionSymbolDto(indices, symbolText));
+        }
+
+        return symbols;
     }
 
     /**
@@ -220,42 +328,45 @@ public class SynopticToAxiomMapper {
 
     /**
      * Maps a media object from Synoptic to Axion format.
+     * Note: Synoptic provides limited media metadata - fields like indices, original_info,
+     * sizes, features are not available and will use defaults.
      */
     private AxionMediaDto mapMedia(JsonNode mediaNode) {
-        String url;
+        String mediaUrl;
         String type;
 
         if (mediaNode.isTextual()) {
-            url = mediaNode.asText();
-            type = inferMediaType(url);
+            // Simple URL string format (from old 'media' array)
+            mediaUrl = mediaNode.asText();
+            type = inferMediaType(mediaUrl);
         } else {
-            url = getText(mediaNode, "url");
+            // mediaV2 object format: { "type": "image", "url": "...", "caption": null, "credit": null }
+            mediaUrl = getText(mediaNode, "url");
             type = getText(mediaNode, "type");
             if (type.isEmpty()) {
-                type = inferMediaType(url);
+                type = inferMediaType(mediaUrl);
             }
         }
 
-        if (url.isEmpty()) {
+        if (mediaUrl.isEmpty()) {
             return null;
         }
 
-        // Map type
+        // Map type to Axion format
         String axionType = switch (type.toLowerCase()) {
             case "image" -> "photo";
             case "video" -> "video";
-            case "gif", "animated_gif" -> "video";
+            case "gif", "animated_gif" -> "animated_gif";
             default -> "photo";
         };
 
         AxionMediaDto.Builder builder = AxionMediaDto.builder()
                 .type(axionType)
-                .mediaUrlHttps(url)
-                .extMediaAvailability(AxionMediaAvailabilityDto.available())
-                .originalInfo(AxionOriginalInfoDto.empty());
+                .mediaUrlHttps(mediaUrl)
+                .extMediaAvailability(AxionMediaAvailabilityDto.available());
 
-        if ("video".equals(axionType)) {
-            builder.videoUrl(url);
+        if ("video".equals(axionType) || "animated_gif".equals(axionType)) {
+            builder.videoUrl(mediaUrl);
         }
 
         return builder.build();

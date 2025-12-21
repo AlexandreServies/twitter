@@ -1,23 +1,25 @@
 package com.bark.twitter.dto.axion;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 
+@Schema(description = "Twitter user information in Axiom format")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record AxionUserInfoDto(
-        String userName,
-        String name,
-        boolean isBlueVerified,
-        @JsonInclude(JsonInclude.Include.ALWAYS) String verifiedType,
-        String profilePicture,
-        String coverImage,
-        String description,
-        String location,
-        int followers,
-        int following,
-        String createdAt,
-        boolean isAutomated,
-        String bioDescription,
-        AxionBadgeInfoDto badgeInfo
+        @Schema(description = "Username/handle without @", example = "elonmusk") String userName,
+        @Schema(description = "Display name", example = "Elon Musk") String name,
+        @Schema(description = "Whether user has Twitter Blue verification") boolean isBlueVerified,
+        @Schema(description = "Type of verification (e.g., 'Business', 'Government', or empty)") @JsonInclude(JsonInclude.Include.ALWAYS) String verifiedType,
+        @Schema(description = "Profile picture URL") String profilePicture,
+        @Schema(description = "Cover/banner image URL") String coverImage,
+        @Schema(description = "User bio description") String description,
+        @Schema(description = "User location", example = "Austin, Texas") String location,
+        @Schema(description = "Follower count") int followers,
+        @Schema(description = "Following count") int following,
+        @Schema(description = "Account creation timestamp", example = "Tue Jun 02 20:12:29 +0000 2009") String createdAt,
+        @Schema(description = "Whether this is an automated account") boolean isAutomated,
+        @Schema(description = "Bio description (same as description)") String bioDescription,
+        @Schema(description = "Badge information for affiliate accounts") AxionBadgeInfoDto badgeInfo
 ) {
     public static Builder builder() {
         return new Builder();

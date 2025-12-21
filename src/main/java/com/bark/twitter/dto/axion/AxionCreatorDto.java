@@ -1,18 +1,20 @@
 package com.bark.twitter.dto.axion;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 
+@Schema(description = "Community creator information")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record AxionCreatorDto(
-        String name,
-        String screenName,
-        String description,
-        String profileBannerUrl,
-        String profileImageUrlHttps,
-        boolean isBlueVerified,
-        @JsonInclude(JsonInclude.Include.ALWAYS) String verifiedType,
-        int followersCount,
-        int followingCount
+        @Schema(description = "Display name", example = "Community Admin") String name,
+        @Schema(description = "Username/handle", example = "admin") String screenName,
+        @Schema(description = "User bio description") String description,
+        @Schema(description = "Profile banner image URL") String profileBannerUrl,
+        @Schema(description = "Profile picture URL") String profileImageUrlHttps,
+        @Schema(description = "Whether user has Twitter Blue verification") boolean isBlueVerified,
+        @Schema(description = "Type of verification") @JsonInclude(JsonInclude.Include.ALWAYS) String verifiedType,
+        @Schema(description = "Follower count") int followersCount,
+        @Schema(description = "Following count") int followingCount
 ) {
     public static Builder builder() {
         return new Builder();

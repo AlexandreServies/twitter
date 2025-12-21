@@ -1,35 +1,37 @@
 package com.bark.twitter.dto.axion;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 
+@Schema(description = "Tweet data in Axiom format")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record AxionTweetDto(
-        AxionUserInfoDto userInfo,
-        String type,
-        String id,
-        String url,
-        String text,
-        String lang,
-        int retweetCount,
-        int replyCount,
-        int likeCount,
-        int quoteCount,
-        long viewCount,
-        String createdAt,
-        int bookmarkCount,
-        boolean isReply,
-        String inReplyToId,
-        String conversationId,
-        String inReplyToUserId,
-        String inReplyToUsername,
-        boolean isPinned,
-        boolean isRetweet,
-        boolean isQuote,
-        AxionExtendedEntitiesDto extendedEntities,
-        AxionEntitiesDto entities,
-        AxionTweetDto quotedTweet,
-        AxionTweetDto retweetedTweet,
-        AxionTweetDto replyTweet
+        @Schema(description = "Author information") AxionUserInfoDto userInfo,
+        @Schema(description = "Content type", example = "tweet") String type,
+        @Schema(description = "Tweet ID", example = "1234567890") String id,
+        @Schema(description = "Tweet URL", example = "https://x.com/user/status/1234567890") String url,
+        @Schema(description = "Tweet text content") String text,
+        @Schema(description = "Language code", example = "en") String lang,
+        @Schema(description = "Retweet count") int retweetCount,
+        @Schema(description = "Reply count") int replyCount,
+        @Schema(description = "Like count") int likeCount,
+        @Schema(description = "Quote count") int quoteCount,
+        @Schema(description = "View count") long viewCount,
+        @Schema(description = "Creation timestamp", example = "Sat Dec 20 23:59:00 +0000 2025") String createdAt,
+        @Schema(description = "Bookmark count") int bookmarkCount,
+        @Schema(description = "Whether this is a reply") boolean isReply,
+        @Schema(description = "ID of tweet being replied to") String inReplyToId,
+        @Schema(description = "Conversation thread ID") String conversationId,
+        @Schema(description = "User ID being replied to") String inReplyToUserId,
+        @Schema(description = "Username being replied to") String inReplyToUsername,
+        @Schema(description = "Whether tweet is pinned") boolean isPinned,
+        @Schema(description = "Whether this is a retweet") boolean isRetweet,
+        @Schema(description = "Whether this is a quote tweet") boolean isQuote,
+        @Schema(description = "Media attachments") AxionExtendedEntitiesDto extendedEntities,
+        @Schema(description = "Tweet entities (URLs, hashtags, mentions)") AxionEntitiesDto entities,
+        @Schema(description = "Quoted tweet data") AxionTweetDto quotedTweet,
+        @Schema(description = "Retweeted tweet data") AxionTweetDto retweetedTweet,
+        @Schema(description = "Tweet being replied to") AxionTweetDto replyTweet
 ) {
     public static Builder builder() {
         return new Builder();

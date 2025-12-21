@@ -1,25 +1,27 @@
 package com.bark.twitter.dto.axion;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
 import java.util.Map;
 
+@Schema(description = "Media attachment (image, video, or GIF)")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record AxionMediaDto(
-        String displayUrl,
-        String expandedUrl,
-        AxionMediaAvailabilityDto extMediaAvailability,
-        Map<String, Object> features,
-        String idStr,
-        List<Integer> indices,
-        String mediaKey,
-        String mediaUrlHttps,
-        AxionOriginalInfoDto originalInfo,
-        Map<String, AxionSizeDto> sizes,
-        String type,
-        String url,
-        String videoUrl
+        @Schema(description = "Shortened display URL") String displayUrl,
+        @Schema(description = "Full expanded URL") String expandedUrl,
+        @Schema(description = "Media availability status") AxionMediaAvailabilityDto extMediaAvailability,
+        @Schema(description = "Media features (face detection, etc.)") Map<String, Object> features,
+        @Schema(description = "Media ID string") String idStr,
+        @Schema(description = "Character indices in tweet text") List<Integer> indices,
+        @Schema(description = "Media key identifier") String mediaKey,
+        @Schema(description = "Direct media URL (HTTPS)") String mediaUrlHttps,
+        @Schema(description = "Original media dimensions") AxionOriginalInfoDto originalInfo,
+        @Schema(description = "Available size variants (thumb, small, medium, large)") Map<String, AxionSizeDto> sizes,
+        @Schema(description = "Media type (photo, video, animated_gif)", example = "photo") String type,
+        @Schema(description = "t.co shortened URL") String url,
+        @Schema(description = "Direct video URL (for video/GIF types)") String videoUrl
 ) {
     public static Builder builder() {
         return new Builder();

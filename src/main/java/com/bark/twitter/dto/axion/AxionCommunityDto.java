@@ -1,19 +1,21 @@
 package com.bark.twitter.dto.axion;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
 
+@Schema(description = "Twitter community information in Axiom format")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record AxionCommunityDto(
-        String name,
-        String description,
-        int memberCount,
-        String createdAt,
-        AxionPrimaryTopicDto primaryTopic,
-        String bannerUrl,
-        AxionCreatorDto creator,
-        List<AxionMemberPreviewDto> membersPreview
+        @Schema(description = "Community name", example = "Tech Enthusiasts") String name,
+        @Schema(description = "Community description") String description,
+        @Schema(description = "Number of community members") int memberCount,
+        @Schema(description = "Creation timestamp", example = "Wed Jan 18 08:54:32 +0000 2023") String createdAt,
+        @Schema(description = "Primary topic/category of the community") AxionPrimaryTopicDto primaryTopic,
+        @Schema(description = "Community banner image URL") String bannerUrl,
+        @Schema(description = "Community creator information") AxionCreatorDto creator,
+        @Schema(description = "Preview of community members") List<AxionMemberPreviewDto> membersPreview
 ) {
     public static Builder builder() {
         return new Builder();
