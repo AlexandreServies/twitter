@@ -4,6 +4,7 @@ import com.bark.twitter.dto.ErrorResponse;
 import com.bark.twitter.dto.axion.AxionCommunityDto;
 import com.bark.twitter.dto.axion.AxionTweetDto;
 import com.bark.twitter.dto.axion.AxionUserInfoDto;
+import com.bark.twitter.exception.BadRequestException;
 import com.bark.twitter.service.TwitterService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -68,10 +69,13 @@ public class TwitterController {
     }
 
     @GetMapping("/user/{idOrHandle}")
-    @Operation(summary = "Get user by ID or handle", description = "Fetches a Twitter user by their numeric ID or username (handle).")
+    @Operation(summary = "Get user by ID or handle", description = "Fetches a Twitter user by their numeric ID or @handle.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "User found",
                     content = @Content(schema = @Schema(implementation = AxionUserInfoDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid user ID format",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"error\": \"Invalid user ID format. Use numeric ID or @handle\"}"))),
             @ApiResponse(responseCode = "401", description = "Missing API key",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = "{\"error\": \"Missing x-api-key header\"}"))),
@@ -82,12 +86,21 @@ public class TwitterController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = "{\"error\": \"User not found: 123456789\"}")))
     })
-    public AxionUserInfoDto getUser(@Parameter(description = "User ID or handle (username)") @PathVariable String idOrHandle) {
+    public AxionUserInfoDto getUser(@Parameter(description = "Numeric user ID or @handle") @PathVariable String idOrHandle) {
         long start = System.currentTimeMillis();
         System.out.println("[" + start + "][USER][" + idOrHandle + "] GET /user/" + idOrHandle);
-        AxionUserInfoDto response = isNumeric(idOrHandle)
-                ? twitterService.getUser(idOrHandle)
-                : twitterService.getUserByUsername(idOrHandle);
+
+        AxionUserInfoDto response;
+        if (idOrHandle.startsWith("@")) {
+            String username = idOrHandle.substring(1);
+            response = twitterService.getUserByUsername(username);
+        } else {
+            if (!isNumeric(idOrHandle)) {
+                throw new BadRequestException("Invalid user ID format. Use numeric ID or @handle");
+            }
+            response = twitterService.getUser(idOrHandle);
+        }
+
         System.out.println("[" + System.currentTimeMillis() + "][USER][" + idOrHandle + "] " + toJson(response));
         return response;
     }
