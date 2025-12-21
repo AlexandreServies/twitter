@@ -48,9 +48,9 @@ public class ApiKeyInterceptor implements HandlerInterceptor {
         // Store API key in request for /usage endpoint access
         request.setAttribute(API_KEY_ATTRIBUTE, apiKey);
 
-        // Track usage asynchronously - zero latency impact (skip /usage endpoint)
-        if (!path.equals("/usage")) {
-            String endpoint = normalizeEndpoint(path);
+        // Track usage asynchronously - zero latency impact (only known endpoints)
+        String endpoint = normalizeEndpoint(path);
+        if (endpoint != null) {
             usageTrackingService.recordCall(apiKey, endpoint);
         }
 
@@ -60,11 +60,17 @@ public class ApiKeyInterceptor implements HandlerInterceptor {
     /**
      * Normalizes endpoint path to group by base endpoint.
      * e.g., /tweet/123 -> /tweet, /user/456 -> /user
+     * Only tracks known endpoints, returns null for unknown.
      */
     private String normalizeEndpoint(String path) {
+        // Normalize any double slashes
+        path = path.replaceAll("//+", "/");
+
         if (path.startsWith("/tweet/")) return "/tweet";
         if (path.startsWith("/user/")) return "/user";
         if (path.startsWith("/community/")) return "/community";
-        return path;
+
+        // Return null for unknown endpoints (won't be tracked)
+        return null;
     }
 }
