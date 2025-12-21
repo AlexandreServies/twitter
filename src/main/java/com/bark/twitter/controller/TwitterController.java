@@ -64,7 +64,8 @@ public class TwitterController {
         long start = System.currentTimeMillis();
         System.out.println("[" + start + "][TWEET][" + id + "] GET /tweet/" + id);
         AxionTweetDto response = twitterService.getTweet(id);
-        System.out.println("[" + System.currentTimeMillis() + "][TWEET][" + id + "] " + toJson(response));
+        long duration = System.currentTimeMillis() - start;
+        System.out.println("[" + System.currentTimeMillis() + "][TWEET][" + id + "][" + duration + "ms] " + toJson(response));
         return response;
     }
 
@@ -101,7 +102,8 @@ public class TwitterController {
             response = twitterService.getUser(idOrHandle);
         }
 
-        System.out.println("[" + System.currentTimeMillis() + "][USER][" + idOrHandle + "] " + toJson(response));
+        long duration = System.currentTimeMillis() - start;
+        System.out.println("[" + System.currentTimeMillis() + "][USER][" + idOrHandle + "][" + duration + "ms] " + toJson(response));
         return response;
     }
 
@@ -136,7 +138,8 @@ public class TwitterController {
         long start = System.currentTimeMillis();
         System.out.println("[" + start + "][COMMUNITY][" + id + "] GET /community/" + id);
         AxionCommunityDto response = twitterService.getCommunity(id);
-        System.out.println("[" + System.currentTimeMillis() + "][COMMUNITY][" + id + "] " + toJson(response));
+        long duration = System.currentTimeMillis() - start;
+        System.out.println("[" + System.currentTimeMillis() + "][COMMUNITY][" + id + "][" + duration + "ms] " + toJson(response));
         return response;
     }
 
