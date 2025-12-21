@@ -5,7 +5,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * Badge info for Twitter affiliate/organization badges.
- * TODO: Not available in Synoptic - add support when data becomes available.
  */
 @Schema(description = "Badge information for affiliate/organization accounts")
 @JsonInclude(JsonInclude.Include.NON_NULL)

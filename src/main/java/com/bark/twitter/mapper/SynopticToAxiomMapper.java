@@ -136,11 +136,13 @@ public class SynopticToAxiomMapper {
             createdAt = getText(extendedInfo, "created_at"); // Keep Twitter format for tweet's userInfo
         }
 
-        // Extract following_count from user_profile
+        // Extract following_count and affiliate_badge from user_profile
         int following = 0;
+        AxionBadgeInfoDto badgeInfo = null;
         JsonNode userProfile = synopticTweet.get("user_profile");
         if (userProfile != null && !userProfile.isNull()) {
             following = getInt(userProfile, "following_count");
+            badgeInfo = mapBadgeInfo(userProfile.get("affiliate_badge"));
         }
 
         return AxionUserInfoDto.builder()
@@ -157,8 +159,28 @@ public class SynopticToAxiomMapper {
                 .createdAt(createdAt)
                 .isAutomated(false) // Not available in Synoptic
                 .bioDescription(description)
-                .badgeInfo(null) // TODO: Not available in Synoptic
+                .badgeInfo(badgeInfo)
                 .build();
+    }
+
+    /**
+     * Maps affiliate badge info from Synoptic data.
+     */
+    private AxionBadgeInfoDto mapBadgeInfo(JsonNode badgeNode) {
+        if (badgeNode == null || badgeNode.isNull()) {
+            return null;
+        }
+
+        String badgeImageUrl = getText(badgeNode, "badge_url");
+        String badgeDescription = getText(badgeNode, "description");
+        String badgeUrl = getText(badgeNode, "link_url");
+
+        // Only return badge info if we have at least the image URL
+        if (badgeImageUrl.isEmpty()) {
+            return null;
+        }
+
+        return new AxionBadgeInfoDto(badgeImageUrl, badgeDescription, badgeUrl);
     }
 
     /**
@@ -447,6 +469,9 @@ public class SynopticToAxiomMapper {
         // Convert createdAt from Twitter format to ISO format
         String createdAt = convertTwitterDateToIso(getText(synopticUser, "created_at"));
 
+        // Map affiliate badge
+        AxionBadgeInfoDto badgeInfo = mapBadgeInfo(synopticUser.get("affiliate_badge"));
+
         return AxionUserInfoDto.builder()
                 .userName(screenName)
                 .name(getText(synopticUser, "name"))
@@ -461,7 +486,7 @@ public class SynopticToAxiomMapper {
                 .createdAt(createdAt)
                 .isAutomated(false) // Not available in Synoptic
                 .bioDescription("") // Empty as per Axion examples
-                .badgeInfo(null) // TODO: Not available in Synoptic
+                .badgeInfo(badgeInfo)
                 .build();
     }
 
