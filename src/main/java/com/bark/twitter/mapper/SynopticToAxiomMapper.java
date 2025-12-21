@@ -336,13 +336,38 @@ public class SynopticToAxiomMapper {
     private AxionExtendedEntitiesDto mapExtendedEntities(JsonNode synopticTweet) {
         List<AxionMediaDto> mediaList = new ArrayList<>();
 
-        if (synopticTweet.has("media") && synopticTweet.get("media").isArray()) {
-            for (JsonNode mediaNode : synopticTweet.get("media")) {
-                AxionMediaDto media = mapMedia(mediaNode);
-                if (media != null) {
-                    mediaList.add(media);
-                }
+        if (!synopticTweet.has("media") || !synopticTweet.get("media").isArray()) {
+            return null;
+        }
+
+        String text = getText(synopticTweet, "text");
+        String screenName = getText(synopticTweet, "screen_name");
+        String tweetId = getText(synopticTweet, "tweet_id");
+
+        // Find all t.co URLs in text
+        List<TcoUrlMatch> allTcoUrls = extractTcoUrls(text);
+
+        // Get the t.co URLs that are used for link entities (from urls array)
+        java.util.Set<String> linkTcoUrls = new java.util.HashSet<>();
+        if (synopticTweet.has("urls") && synopticTweet.get("urls").isArray()) {
+            for (int i = 0; i < synopticTweet.get("urls").size() && i < allTcoUrls.size(); i++) {
+                linkTcoUrls.add(allTcoUrls.get(i).url());
             }
+        }
+
+        // Media t.co URLs are the ones NOT used for links
+        List<TcoUrlMatch> mediaTcoUrls = allTcoUrls.stream()
+                .filter(tco -> !linkTcoUrls.contains(tco.url()))
+                .toList();
+
+        int mediaIndex = 0;
+        for (JsonNode mediaNode : synopticTweet.get("media")) {
+            TcoUrlMatch tcoMatch = mediaIndex < mediaTcoUrls.size() ? mediaTcoUrls.get(mediaIndex) : null;
+            AxionMediaDto media = mapMedia(mediaNode, screenName, tweetId, mediaIndex + 1, tcoMatch);
+            if (media != null) {
+                mediaList.add(media);
+            }
+            mediaIndex++;
         }
 
         return mediaList.isEmpty() ? null : AxionExtendedEntitiesDto.withMedia(mediaList);
@@ -350,19 +375,16 @@ public class SynopticToAxiomMapper {
 
     /**
      * Maps a media object from Synoptic to Axion format.
-     * Note: Synoptic provides limited media metadata - fields like indices, original_info,
-     * sizes, features are not available and will use defaults.
      */
-    private AxionMediaDto mapMedia(JsonNode mediaNode) {
+    private AxionMediaDto mapMedia(JsonNode mediaNode, String screenName, String tweetId,
+                                    int mediaNumber, TcoUrlMatch tcoMatch) {
         String mediaUrl;
         String type;
 
         if (mediaNode.isTextual()) {
-            // Simple URL string format (from old 'media' array)
             mediaUrl = mediaNode.asText();
             type = inferMediaType(mediaUrl);
         } else {
-            // mediaV2 object format: { "type": "image", "url": "...", "caption": null, "credit": null }
             mediaUrl = getText(mediaNode, "url");
             type = getText(mediaNode, "type");
             if (type.isEmpty()) {
@@ -386,6 +408,20 @@ public class SynopticToAxiomMapper {
                 .type(axionType)
                 .mediaUrlHttps(mediaUrl)
                 .extMediaAvailability(AxionMediaAvailabilityDto.available());
+
+        // Populate fields derivable from t.co URL match
+        if (tcoMatch != null) {
+            String tcoCode = tcoMatch.url().replace("https://t.co/", "");
+            builder.url(tcoMatch.url())
+                    .displayUrl("pic.twitter.com/" + tcoCode)
+                    .indices(List.of(tcoMatch.start(), tcoMatch.end()));
+        }
+
+        // Construct expanded URL
+        if (!screenName.isEmpty() && !tweetId.isEmpty()) {
+            String mediaType = "video".equals(axionType) || "animated_gif".equals(axionType) ? "video" : "photo";
+            builder.expandedUrl("https://twitter.com/" + screenName + "/status/" + tweetId + "/" + mediaType + "/" + mediaNumber);
+        }
 
         if ("video".equals(axionType) || "animated_gif".equals(axionType)) {
             builder.videoUrl(mediaUrl);
