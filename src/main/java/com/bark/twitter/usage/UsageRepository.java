@@ -136,4 +136,80 @@ public class UsageRepository {
                     return records;
                 });
     }
+
+    /**
+     * Batch updates detailed counts in DynamoDB asynchronously.
+     */
+    public void batchUpdateDetailedCountsAsync(List<DetailedUsageRecord> records) {
+        for (DetailedUsageRecord record : records) {
+            updateDetailedCountAsync(record);
+        }
+    }
+
+    /**
+     * Atomically increments the count for a detailed usage record.
+     */
+    private CompletableFuture<Void> updateDetailedCountAsync(DetailedUsageRecord record) {
+        Map<String, AttributeValue> key = new HashMap<>();
+        key.put("pk", AttributeValue.builder().s(record.pk()).build());
+        key.put("sk", AttributeValue.builder().s(record.sk()).build());
+
+        Map<String, AttributeValue> expressionValues = new HashMap<>();
+        expressionValues.put(":inc", AttributeValue.builder().n(String.valueOf(record.count())).build());
+        expressionValues.put(":endpoint", AttributeValue.builder().s(record.endpoint()).build());
+        expressionValues.put(":type", AttributeValue.builder().s(record.type()).build());
+        expressionValues.put(":bucket", AttributeValue.builder().s(record.minuteBucket()).build());
+
+        UpdateItemRequest request = UpdateItemRequest.builder()
+                .tableName(tableName)
+                .key(key)
+                .updateExpression("ADD #count :inc SET #endpoint = :endpoint, #type = :type, #bucket = :bucket")
+                .expressionAttributeNames(Map.of(
+                        "#count", "count",
+                        "#endpoint", "endpoint",
+                        "#type", "type",
+                        "#bucket", "minuteBucket"
+                ))
+                .expressionAttributeValues(expressionValues)
+                .build();
+
+        return dynamoDbClient.updateItem(request)
+                .thenAccept(response -> {})
+                .exceptionally(e -> {
+                    System.err.println("[USAGE] Failed to update detailed DynamoDB: " + e.getMessage());
+                    return null;
+                });
+    }
+
+    /**
+     * Queries all detailed usage data for a specific API key (no date filter).
+     */
+    public CompletableFuture<List<DetailedUsageRecord>> queryAllDetailedUsage(String apiKey) {
+        String pk = "detail#" + apiKey;
+
+        QueryRequest request = QueryRequest.builder()
+                .tableName(tableName)
+                .keyConditionExpression("pk = :pk")
+                .expressionAttributeValues(Map.of(
+                        ":pk", AttributeValue.builder().s(pk).build()
+                ))
+                .build();
+
+        return dynamoDbClient.query(request)
+                .thenApply(response -> {
+                    List<DetailedUsageRecord> records = new ArrayList<>();
+                    for (Map<String, AttributeValue> item : response.items()) {
+                        String sk = item.get("sk").s();
+                        // Format: <endpoint>#<type>#<minute-bucket>
+                        String[] parts = sk.split("#", 3);
+                        String endpoint = parts[0];
+                        String type = parts.length > 1 ? parts[1] : "";
+                        String minuteBucket = parts.length > 2 ? parts[2] : "";
+                        long count = Long.parseLong(item.get("count").n());
+
+                        records.add(new DetailedUsageRecord(apiKey, endpoint, type, minuteBucket, count));
+                    }
+                    return records;
+                });
+    }
 }

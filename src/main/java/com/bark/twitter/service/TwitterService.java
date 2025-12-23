@@ -2,6 +2,7 @@ package com.bark.twitter.service;
 
 import com.bark.twitter.client.SynopticClient;
 import com.bark.twitter.client.TwitterApiClient;
+import com.bark.twitter.config.ApiKeyInterceptor;
 import com.bark.twitter.dto.axion.AxionCommunityDto;
 import com.bark.twitter.dto.axion.AxionTweetDto;
 import com.bark.twitter.dto.axion.AxionUserInfoDto;
@@ -9,11 +10,15 @@ import com.bark.twitter.exception.NotFoundException;
 import com.bark.twitter.mapper.SynopticToAxiomMapper;
 import com.bark.twitter.mapper.SynopticToTwitterApiMapper;
 import com.bark.twitter.mapper.TwitterApiToAxionCommunityMapper;
+import com.bark.twitter.usage.DetailedUsageTrackingService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 @Service
 public class TwitterService {
@@ -24,6 +29,7 @@ public class TwitterService {
     private final SynopticToAxiomMapper axiomMapper;
     private final TwitterApiToAxionCommunityMapper communityMapper;
     private final VideoCacheWarmingService videoCacheWarmingService;
+    private final DetailedUsageTrackingService detailedUsageTrackingService;
     private final Cache tweetsCache;
     private final Cache usersCache;
     private final Cache communitiesCache;
@@ -31,6 +37,7 @@ public class TwitterService {
     public TwitterService(SynopticClient synopticClient, TwitterApiClient twitterApiClient,
                           SynopticToTwitterApiMapper twitterApiMapper, SynopticToAxiomMapper axiomMapper,
                           TwitterApiToAxionCommunityMapper communityMapper, VideoCacheWarmingService videoCacheWarmingService,
+                          DetailedUsageTrackingService detailedUsageTrackingService,
                           CacheManager cacheManager) {
         this.synopticClient = synopticClient;
         this.twitterApiClient = twitterApiClient;
@@ -38,16 +45,34 @@ public class TwitterService {
         this.axiomMapper = axiomMapper;
         this.communityMapper = communityMapper;
         this.videoCacheWarmingService = videoCacheWarmingService;
+        this.detailedUsageTrackingService = detailedUsageTrackingService;
         this.tweetsCache = cacheManager.getCache("tweets");
         this.usersCache = cacheManager.getCache("users");
         this.communitiesCache = cacheManager.getCache("communities");
     }
 
+    private String getCurrentApiKey() {
+        ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attrs != null) {
+            HttpServletRequest request = attrs.getRequest();
+            return (String) request.getAttribute(ApiKeyInterceptor.API_KEY_ATTRIBUTE);
+        }
+        return null;
+    }
+
     public AxionTweetDto getTweet(String tweetId) {
+        String apiKey = getCurrentApiKey();
         AxionTweetDto cached = tweetsCache.get(tweetId, AxionTweetDto.class);
         if (cached != null) {
             System.out.println("[" + System.currentTimeMillis() + "][TWEET][" + tweetId + "] Cache hit");
+            if (apiKey != null) {
+                detailedUsageTrackingService.recordCacheHit(apiKey, "/tweet");
+            }
             return cached;
+        }
+
+        if (apiKey != null) {
+            detailedUsageTrackingService.recordSynopticCall(apiKey, "/tweet");
         }
 
         JsonNode synopticTweet = synopticClient.getTweet(tweetId)
@@ -108,10 +133,18 @@ public class TwitterService {
     }
 
     public AxionUserInfoDto getUser(String userId) {
+        String apiKey = getCurrentApiKey();
         AxionUserInfoDto cached = usersCache.get(userId, AxionUserInfoDto.class);
         if (cached != null) {
             System.out.println("[" + System.currentTimeMillis() + "][USER][" + userId + "] Cache hit");
+            if (apiKey != null) {
+                detailedUsageTrackingService.recordCacheHit(apiKey, "/user");
+            }
             return cached;
+        }
+
+        if (apiKey != null) {
+            detailedUsageTrackingService.recordSynopticCall(apiKey, "/user");
         }
 
         JsonNode synopticUser = synopticClient.getUser(userId)
@@ -123,11 +156,19 @@ public class TwitterService {
     }
 
     public AxionUserInfoDto getUserByUsername(String username) {
+        String apiKey = getCurrentApiKey();
         String cacheKey = "username:" + username;
         AxionUserInfoDto cached = usersCache.get(cacheKey, AxionUserInfoDto.class);
         if (cached != null) {
             System.out.println("[" + System.currentTimeMillis() + "][USER][@" + username + "] Cache hit");
+            if (apiKey != null) {
+                detailedUsageTrackingService.recordCacheHit(apiKey, "/user");
+            }
             return cached;
+        }
+
+        if (apiKey != null) {
+            detailedUsageTrackingService.recordSynopticCall(apiKey, "/user");
         }
 
         JsonNode synopticUser = synopticClient.getUserByUsername(username)
@@ -139,10 +180,18 @@ public class TwitterService {
     }
 
     public AxionCommunityDto getCommunity(String communityId) {
+        String apiKey = getCurrentApiKey();
         AxionCommunityDto cached = communitiesCache.get(communityId, AxionCommunityDto.class);
         if (cached != null) {
             System.out.println("[" + System.currentTimeMillis() + "][COMMUNITY][" + communityId + "] Cache hit");
+            if (apiKey != null) {
+                detailedUsageTrackingService.recordCacheHit(apiKey, "/community");
+            }
             return cached;
+        }
+
+        if (apiKey != null) {
+            detailedUsageTrackingService.recordSynopticCall(apiKey, "/community");
         }
 
         JsonNode communityInfo = twitterApiClient.getCommunity(communityId)

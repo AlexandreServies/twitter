@@ -13,6 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -37,6 +38,21 @@ public class UsageController {
         List<UsageRecord> records = usageRepository.queryAllUsage(apiKey).get();
 
         return aggregateUsage(records);
+    }
+
+    @GetMapping("/all")
+    @Operation(summary = "Get detailed usage statistics", description = "Returns usage breakdown with synoptic calls and cache hits by endpoint and day")
+    public DetailedUsageResponse getDetailedUsage(HttpServletRequest request) throws ExecutionException, InterruptedException {
+        String apiKey = (String) request.getAttribute(ApiKeyInterceptor.API_KEY_ATTRIBUTE);
+
+        // Query both regular usage and detailed usage in parallel
+        CompletableFuture<List<UsageRecord>> usageFuture = usageRepository.queryAllUsage(apiKey);
+        CompletableFuture<List<DetailedUsageRecord>> detailedFuture = usageRepository.queryAllDetailedUsage(apiKey);
+
+        List<UsageRecord> usageRecords = usageFuture.get();
+        List<DetailedUsageRecord> detailedRecords = detailedFuture.get();
+
+        return aggregateDetailedUsage(usageRecords, detailedRecords);
     }
 
     /**
@@ -88,5 +104,101 @@ public class UsageController {
         }
 
         return new UsageResponse(total, endpoints);
+    }
+
+    private static final double INCOME_PER_CALL = 0.00025;
+    private static final double COST_PER_TWEET_SYNOPTIC = 0.0001;
+    private static final double COST_PER_OTHER_SYNOPTIC = 0.00012;
+
+    /**
+     * Aggregates usage and detailed records into endpoint -> day breakdown with synoptic/cache counts.
+     */
+    private DetailedUsageResponse aggregateDetailedUsage(List<UsageRecord> usageRecords, List<DetailedUsageRecord> detailedRecords) {
+        // Structure: endpoint -> day -> {total, synoptic, cache}
+        Map<String, Map<String, long[]>> aggregated = new HashMap<>();
+
+        // Aggregate total counts from regular usage records
+        for (UsageRecord record : usageRecords) {
+            String endpoint = record.endpoint();
+            String day = record.minuteBucket().substring(0, 10);  // 2025-12-17
+            long count = record.count();
+
+            aggregated.computeIfAbsent(endpoint, k -> new TreeMap<>())
+                    .computeIfAbsent(day, k -> new long[3])[0] += count;  // [0] = total
+        }
+
+        // Aggregate synoptic and cache counts from detailed records
+        for (DetailedUsageRecord record : detailedRecords) {
+            String endpoint = record.endpoint();
+            String day = record.minuteBucket().substring(0, 10);
+            long count = record.count();
+
+            long[] counts = aggregated.computeIfAbsent(endpoint, k -> new TreeMap<>())
+                    .computeIfAbsent(day, k -> new long[3]);
+
+            if ("synoptic".equals(record.type())) {
+                counts[1] += count;  // [1] = synoptic
+            } else if ("cache".equals(record.type())) {
+                counts[2] += count;  // [2] = cache
+            }
+        }
+
+        // Build response
+        long grandTotal = 0;
+        long grandSynoptic = 0;
+        long grandCache = 0;
+        double grandIncome = 0;
+        double grandCost = 0;
+        Map<String, DetailedUsageResponse.EndpointUsage> endpoints = new LinkedHashMap<>();
+
+        for (Map.Entry<String, Map<String, long[]>> endpointEntry : aggregated.entrySet()) {
+            String endpoint = endpointEntry.getKey();
+            Map<String, long[]> dayMap = endpointEntry.getValue();
+
+            long endpointTotal = 0;
+            long endpointSynoptic = 0;
+            long endpointCache = 0;
+            double endpointIncome = 0;
+            double endpointCost = 0;
+            Map<String, DetailedUsageResponse.DayUsage> days = new LinkedHashMap<>();
+
+            double costPerSynoptic = "/tweet".equals(endpoint) ? COST_PER_TWEET_SYNOPTIC : COST_PER_OTHER_SYNOPTIC;
+
+            for (Map.Entry<String, long[]> dayEntry : dayMap.entrySet()) {
+                String day = dayEntry.getKey();
+                long[] counts = dayEntry.getValue();
+
+                long dayTotal = counts[0];
+                long daySynoptic = counts[1];
+                long dayCache = counts[2];
+                double dayIncome = dayTotal * INCOME_PER_CALL;
+                double dayCost = daySynoptic * costPerSynoptic;
+                double dayProfit = dayIncome - dayCost;
+
+                endpointTotal += dayTotal;
+                endpointSynoptic += daySynoptic;
+                endpointCache += dayCache;
+                endpointIncome += dayIncome;
+                endpointCost += dayCost;
+
+                days.put(day, new DetailedUsageResponse.DayUsage(
+                        dayTotal, daySynoptic, dayCache, dayIncome, dayCost, dayProfit));
+            }
+
+            grandTotal += endpointTotal;
+            grandSynoptic += endpointSynoptic;
+            grandCache += endpointCache;
+            grandIncome += endpointIncome;
+            grandCost += endpointCost;
+
+            double endpointProfit = endpointIncome - endpointCost;
+            endpoints.put(endpoint, new DetailedUsageResponse.EndpointUsage(
+                    endpointTotal, endpointSynoptic, endpointCache,
+                    endpointIncome, endpointCost, endpointProfit, days));
+        }
+
+        double grandProfit = grandIncome - grandCost;
+        return new DetailedUsageResponse(grandTotal, grandSynoptic, grandCache,
+                grandIncome, grandCost, grandProfit, endpoints);
     }
 }
