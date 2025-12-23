@@ -39,7 +39,6 @@ public class MetricsController {
             if (timer != null && timer.count() > 0) {
                 Map<String, Object> endpointMetrics = new HashMap<>();
                 endpointMetrics.put("count", timer.count());
-                endpointMetrics.put("totalTimeMs", timer.totalTime(TimeUnit.MILLISECONDS));
                 endpointMetrics.put("meanMs", timer.mean(TimeUnit.MILLISECONDS));
                 endpointMetrics.put("maxMs", timer.max(TimeUnit.MILLISECONDS));
 
