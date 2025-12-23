@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import static com.bark.twitter.util.TwitterMediaProxy.proxyVideoUrl;
+
 /**
  * Mapper that transforms Synoptic API responses to TwitterAPI format.
  */
@@ -327,12 +329,16 @@ public class SynopticToTwitterApiMapper {
             default -> "photo";
         };
 
+        // Proxy video URLs for both mediaUrlHttps and videoInfo
+        boolean isVideo = "video".equals(twitterType) || "animated_gif".equals(twitterType);
+        String mediaUrl = isVideo ? proxyVideoUrl(url) : url;
+
         MediaDto.Builder builder = MediaDto.builder()
                 .type(twitterType)
-                .mediaUrlHttps(url);
+                .mediaUrlHttps(mediaUrl);
 
-        if ("video".equals(twitterType) || "animated_gif".equals(twitterType)) {
-            builder.videoInfo(VideoInfoDto.withSingleVariant(url));
+        if (isVideo) {
+            builder.videoInfo(VideoInfoDto.withSingleVariant(mediaUrl));
         }
 
         return builder.build();

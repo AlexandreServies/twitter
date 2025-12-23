@@ -85,6 +85,28 @@ public class SynopticClient {
         }
     }
 
+    public Optional<JsonNode> getCommunity(String communityId) {
+        try {
+            JsonNode response = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/communities/" + communityId)
+                            .build())
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .block();
+
+            Optional<JsonNode> result = extractData(response);
+            System.out.println("[" + System.currentTimeMillis() + "][SYNOPTIC][COMMUNITY][" + communityId + "] " + (result.isPresent() ? result.get() : "Not found"));
+            return result;
+        } catch (WebClientResponseException e) {
+            System.out.println("[ERROR] Error fetching community " + communityId + ": " + e.getStatusCode() + " " + e.getMessage());
+            return Optional.empty();
+        } catch (Exception e) {
+            System.out.println("[ERROR] Error fetching community " + communityId + ": " + e.getMessage());
+            return Optional.empty();
+        }
+    }
+
     private Optional<JsonNode> extractFirstFromData(JsonNode response) {
         if (response == null) {
             return Optional.empty();
@@ -96,5 +118,18 @@ public class SynopticClient {
         }
 
         return Optional.of(data.get(0));
+    }
+
+    private Optional<JsonNode> extractData(JsonNode response) {
+        if (response == null) {
+            return Optional.empty();
+        }
+
+        JsonNode data = response.get("data");
+        if (data == null || data.isNull()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(data);
     }
 }

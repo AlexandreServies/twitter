@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import static com.bark.twitter.util.TwitterMediaProxy.proxyVideoUrl;
+
 /**
  * Mapper that transforms Synoptic API responses to Axion format.
  */
@@ -404,9 +406,13 @@ public class SynopticToAxiomMapper {
             default -> "photo";
         };
 
+        // Proxy video URLs for both mediaUrlHttps and videoUrl
+        boolean isVideo = "video".equals(axionType) || "animated_gif".equals(axionType);
+        String mediaUrlForDto = isVideo ? proxyVideoUrl(mediaUrl) : mediaUrl;
+
         AxionMediaDto.Builder builder = AxionMediaDto.builder()
                 .type(axionType)
-                .mediaUrlHttps(mediaUrl)
+                .mediaUrlHttps(mediaUrlForDto)
                 .extMediaAvailability(AxionMediaAvailabilityDto.available());
 
         // Populate fields derivable from t.co URL match
@@ -423,8 +429,8 @@ public class SynopticToAxiomMapper {
             builder.expandedUrl("https://twitter.com/" + screenName + "/status/" + tweetId + "/" + mediaType + "/" + mediaNumber);
         }
 
-        if ("video".equals(axionType) || "animated_gif".equals(axionType)) {
-            builder.videoUrl(mediaUrl);
+        if (isVideo) {
+            builder.videoUrl(mediaUrlForDto);
         }
 
         return builder.build();

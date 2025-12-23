@@ -23,18 +23,21 @@ public class TwitterService {
     private final SynopticToTwitterApiMapper twitterApiMapper;
     private final SynopticToAxiomMapper axiomMapper;
     private final TwitterApiToAxionCommunityMapper communityMapper;
+    private final VideoCacheWarmingService videoCacheWarmingService;
     private final Cache tweetsCache;
     private final Cache usersCache;
     private final Cache communitiesCache;
 
     public TwitterService(SynopticClient synopticClient, TwitterApiClient twitterApiClient,
                           SynopticToTwitterApiMapper twitterApiMapper, SynopticToAxiomMapper axiomMapper,
-                          TwitterApiToAxionCommunityMapper communityMapper, CacheManager cacheManager) {
+                          TwitterApiToAxionCommunityMapper communityMapper, VideoCacheWarmingService videoCacheWarmingService,
+                          CacheManager cacheManager) {
         this.synopticClient = synopticClient;
         this.twitterApiClient = twitterApiClient;
         this.twitterApiMapper = twitterApiMapper;
         this.axiomMapper = axiomMapper;
         this.communityMapper = communityMapper;
+        this.videoCacheWarmingService = videoCacheWarmingService;
         this.tweetsCache = cacheManager.getCache("tweets");
         this.usersCache = cacheManager.getCache("users");
         this.communitiesCache = cacheManager.getCache("communities");
@@ -55,6 +58,10 @@ public class TwitterService {
 
         AxionTweetDto tweetDto = axiomMapper.mapTweet(enriched);
         tweetsCache.put(tweetId, tweetDto);
+
+        // Warm video cache async (fire-and-forget, no latency impact)
+        videoCacheWarmingService.warmCacheAsync(tweetDto);
+
         return tweetDto;
     }
 
