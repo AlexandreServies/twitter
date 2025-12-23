@@ -28,7 +28,7 @@ public class ApiKeyInterceptor implements HandlerInterceptor {
 
         // Allow public endpoints without authentication
         if (path.equals("/health") ||
-            path.startsWith("/actuator") ||
+            path.equals("/actuator/health") ||
             path.startsWith("/swagger-ui") ||
             path.startsWith("/v3/api-docs") ||
             path.equals("/swagger-ui.html")) {
