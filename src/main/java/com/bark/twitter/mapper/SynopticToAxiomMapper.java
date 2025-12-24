@@ -15,6 +15,7 @@ import static com.bark.twitter.util.TwitterMediaProxy.proxyVideoUrl;
 
 /**
  * Mapper that transforms Synoptic API responses to Axion format.
+ * Handles tweets, users, and communities.
  */
 @Component
 public class SynopticToAxiomMapper {
@@ -547,5 +548,59 @@ public class SynopticToAxiomMapper {
         } catch (Exception e) {
             return twitterDate; // Return original if parsing fails
         }
+    }
+
+    /**
+     * Maps Synoptic community data and creator user data to Axion format.
+     *
+     * @param communityData Synoptic community response (the "data" object)
+     * @param creatorData   Synoptic user response for creator (the first element of "data" array)
+     * @return AxionCommunityDto
+     */
+    public AxionCommunityDto mapCommunity(JsonNode communityData, JsonNode creatorData) {
+        return AxionCommunityDto.builder()
+                .name(getText(communityData, "name"))
+                .description(getText(communityData, "description"))
+                .memberCount(getInt(communityData, "member_count"))
+                .createdAt(formatCommunityCreatedAt(communityData.get("created_at")))
+                .primaryTopic(mapCommunityPrimaryTopic(communityData.get("primary_topic")))
+                .bannerUrl(getText(communityData, "banner_url"))
+                .creator(mapCommunityCreator(creatorData))
+                .membersPreview(List.of()) // Not available in Synoptic
+                .build();
+    }
+
+    private String formatCommunityCreatedAt(JsonNode createdAtNode) {
+        if (createdAtNode == null || createdAtNode.isNull()) {
+            return "";
+        }
+        // Synoptic returns timestamp in milliseconds
+        long timestamp = createdAtNode.asLong();
+        return formatTwitterDate(timestamp);
+    }
+
+    private AxionPrimaryTopicDto mapCommunityPrimaryTopic(JsonNode topicNode) {
+        if (topicNode == null || topicNode.isNull()) {
+            return AxionPrimaryTopicDto.empty();
+        }
+        String name = getText(topicNode, "name");
+        return new AxionPrimaryTopicDto(name);
+    }
+
+    private AxionCreatorDto mapCommunityCreator(JsonNode creatorNode) {
+        if (creatorNode == null || creatorNode.isNull()) {
+            return null;
+        }
+        return AxionCreatorDto.builder()
+                .name(getText(creatorNode, "name"))
+                .screenName(getText(creatorNode, "screen_name"))
+                .description(getText(creatorNode, "description"))
+                .profileBannerUrl(getText(creatorNode, "profile_banner_url"))
+                .profileImageUrlHttps(getText(creatorNode, "profile_image_url"))
+                .isBlueVerified(getBool(creatorNode, "is_blue_verified"))
+                .verifiedType(getText(creatorNode, "verified_type"))
+                .followersCount(getInt(creatorNode, "followers_count"))
+                .followingCount(getInt(creatorNode, "following_count"))
+                .build();
     }
 }

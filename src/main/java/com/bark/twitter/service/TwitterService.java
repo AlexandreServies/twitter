@@ -7,7 +7,6 @@ import com.bark.twitter.dto.axion.AxionTweetDto;
 import com.bark.twitter.dto.axion.AxionUserInfoDto;
 import com.bark.twitter.exception.NotFoundException;
 import com.bark.twitter.mapper.SynopticToAxiomMapper;
-import com.bark.twitter.mapper.SynopticToAxionCommunityMapper;
 import com.bark.twitter.usage.DetailedUsageTrackingService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -23,7 +22,6 @@ public class TwitterService {
 
     private final SynopticClient synopticClient;
     private final SynopticToAxiomMapper axiomMapper;
-    private final SynopticToAxionCommunityMapper communityMapper;
     private final VideoCacheWarmingService videoCacheWarmingService;
     private final DetailedUsageTrackingService detailedUsageTrackingService;
     private final Cache tweetsCache;
@@ -32,13 +30,11 @@ public class TwitterService {
 
     public TwitterService(SynopticClient synopticClient,
                           SynopticToAxiomMapper axiomMapper,
-                          SynopticToAxionCommunityMapper communityMapper,
                           VideoCacheWarmingService videoCacheWarmingService,
                           DetailedUsageTrackingService detailedUsageTrackingService,
                           CacheManager cacheManager) {
         this.synopticClient = synopticClient;
         this.axiomMapper = axiomMapper;
-        this.communityMapper = communityMapper;
         this.videoCacheWarmingService = videoCacheWarmingService;
         this.detailedUsageTrackingService = detailedUsageTrackingService;
         this.tweetsCache = cacheManager.getCache("tweets");
@@ -134,7 +130,7 @@ public class TwitterService {
             creatorData = synopticClient.getUser(creatorUserId).orElse(null);
         }
 
-        AxionCommunityDto communityDto = communityMapper.mapCommunity(communityData, creatorData);
+        AxionCommunityDto communityDto = axiomMapper.mapCommunity(communityData, creatorData);
         communitiesCache.put(communityId, communityDto);
         return communityDto;
     }
