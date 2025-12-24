@@ -109,21 +109,28 @@ public class UsageRepository {
 
     /**
      * Queries all usage data for a specific API key (no date filter).
+     * Handles pagination to retrieve all records.
      */
     public CompletableFuture<List<UsageRecord>> queryAllUsage(String apiKey) {
-        String pk = apiKey;
+        return queryAllUsagePaginated(apiKey, null, new ArrayList<>());
+    }
 
-        QueryRequest request = QueryRequest.builder()
+    private CompletableFuture<List<UsageRecord>> queryAllUsagePaginated(
+            String apiKey, Map<String, AttributeValue> lastKey, List<UsageRecord> accumulated) {
+
+        QueryRequest.Builder requestBuilder = QueryRequest.builder()
                 .tableName(tableName)
                 .keyConditionExpression("pk = :pk")
                 .expressionAttributeValues(Map.of(
-                        ":pk", AttributeValue.builder().s(pk).build()
-                ))
-                .build();
+                        ":pk", AttributeValue.builder().s(apiKey).build()
+                ));
 
-        return dynamoDbClient.query(request)
-                .thenApply(response -> {
-                    List<UsageRecord> records = new ArrayList<>();
+        if (lastKey != null) {
+            requestBuilder.exclusiveStartKey(lastKey);
+        }
+
+        return dynamoDbClient.query(requestBuilder.build())
+                .thenCompose(response -> {
                     for (Map<String, AttributeValue> item : response.items()) {
                         String sk = item.get("sk").s();
                         String[] parts = sk.split("#", 2);
@@ -131,9 +138,13 @@ public class UsageRepository {
                         String minuteBucket = parts.length > 1 ? parts[1] : "";
                         long count = Long.parseLong(item.get("count").n());
 
-                        records.add(new UsageRecord(apiKey, endpoint, minuteBucket, count));
+                        accumulated.add(new UsageRecord(apiKey, endpoint, minuteBucket, count));
                     }
-                    return records;
+
+                    if (response.lastEvaluatedKey() != null && !response.lastEvaluatedKey().isEmpty()) {
+                        return queryAllUsagePaginated(apiKey, response.lastEvaluatedKey(), accumulated);
+                    }
+                    return CompletableFuture.completedFuture(accumulated);
                 });
     }
 
@@ -183,21 +194,29 @@ public class UsageRepository {
 
     /**
      * Queries all detailed usage data for a specific API key (no date filter).
+     * Handles pagination to retrieve all records.
      */
     public CompletableFuture<List<DetailedUsageRecord>> queryAllDetailedUsage(String apiKey) {
         String pk = "detail#" + apiKey;
+        return queryAllDetailedUsagePaginated(apiKey, pk, null, new ArrayList<>());
+    }
 
-        QueryRequest request = QueryRequest.builder()
+    private CompletableFuture<List<DetailedUsageRecord>> queryAllDetailedUsagePaginated(
+            String apiKey, String pk, Map<String, AttributeValue> lastKey, List<DetailedUsageRecord> accumulated) {
+
+        QueryRequest.Builder requestBuilder = QueryRequest.builder()
                 .tableName(tableName)
                 .keyConditionExpression("pk = :pk")
                 .expressionAttributeValues(Map.of(
                         ":pk", AttributeValue.builder().s(pk).build()
-                ))
-                .build();
+                ));
 
-        return dynamoDbClient.query(request)
-                .thenApply(response -> {
-                    List<DetailedUsageRecord> records = new ArrayList<>();
+        if (lastKey != null) {
+            requestBuilder.exclusiveStartKey(lastKey);
+        }
+
+        return dynamoDbClient.query(requestBuilder.build())
+                .thenCompose(response -> {
                     for (Map<String, AttributeValue> item : response.items()) {
                         String sk = item.get("sk").s();
                         // Format: <endpoint>#<type>#<minute-bucket>
@@ -207,9 +226,13 @@ public class UsageRepository {
                         String minuteBucket = parts.length > 2 ? parts[2] : "";
                         long count = Long.parseLong(item.get("count").n());
 
-                        records.add(new DetailedUsageRecord(apiKey, endpoint, type, minuteBucket, count));
+                        accumulated.add(new DetailedUsageRecord(apiKey, endpoint, type, minuteBucket, count));
                     }
-                    return records;
+
+                    if (response.lastEvaluatedKey() != null && !response.lastEvaluatedKey().isEmpty()) {
+                        return queryAllDetailedUsagePaginated(apiKey, pk, response.lastEvaluatedKey(), accumulated);
+                    }
+                    return CompletableFuture.completedFuture(accumulated);
                 });
     }
 }
