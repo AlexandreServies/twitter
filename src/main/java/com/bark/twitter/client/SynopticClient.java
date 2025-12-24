@@ -30,19 +30,19 @@ public class SynopticClient {
 
             Optional<JsonNode> result = extractFirstFromData(response);
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[SYNOPTIC][TWEET][" + tweetId + "][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
+            System.out.println("[" + System.currentTimeMillis() + "][SYNOPTIC][TWEET][" + tweetId + "][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
             return result;
         } catch (WebClientResponseException.NotFound e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[SYNOPTIC][TWEET][" + tweetId + "][" + elapsed + "ms] Not found");
+            System.out.println("[" + System.currentTimeMillis() + "][SYNOPTIC][TWEET][" + tweetId + "][" + elapsed + "ms] Not found");
             return Optional.empty();
         } catch (WebClientResponseException e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[ERROR][SYNOPTIC][TWEET][" + tweetId + "][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][ERROR][SYNOPTIC][TWEET][" + tweetId + "][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
             return Optional.empty();
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[ERROR][SYNOPTIC][TWEET][" + tweetId + "][" + elapsed + "ms] " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][ERROR][SYNOPTIC][TWEET][" + tweetId + "][" + elapsed + "ms] " + e.getMessage());
             return Optional.empty();
         }
     }
@@ -61,19 +61,19 @@ public class SynopticClient {
 
             Optional<JsonNode> result = extractFirstFromData(response);
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[SYNOPTIC][USER][" + userId + "][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
+            System.out.println("[" + System.currentTimeMillis() + "][SYNOPTIC][USER][" + userId + "][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
             return result;
         } catch (WebClientResponseException.NotFound e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[SYNOPTIC][USER][" + userId + "][" + elapsed + "ms] Not found");
+            System.out.println("[" + System.currentTimeMillis() + "][SYNOPTIC][USER][" + userId + "][" + elapsed + "ms] Not found");
             return Optional.empty();
         } catch (WebClientResponseException e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[ERROR][SYNOPTIC][USER][" + userId + "][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][ERROR][SYNOPTIC][USER][" + userId + "][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
             return Optional.empty();
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[ERROR][SYNOPTIC][USER][" + userId + "][" + elapsed + "ms] " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][ERROR][SYNOPTIC][USER][" + userId + "][" + elapsed + "ms] " + e.getMessage());
             return Optional.empty();
         }
     }
@@ -92,19 +92,19 @@ public class SynopticClient {
 
             Optional<JsonNode> result = extractFirstFromData(response);
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[SYNOPTIC][USER][@" + username + "][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
+            System.out.println("[" + System.currentTimeMillis() + "][SYNOPTIC][USER][@" + username + "][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
             return result;
         } catch (WebClientResponseException.NotFound e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[SYNOPTIC][USER][@" + username + "][" + elapsed + "ms] Not found");
+            System.out.println("[" + System.currentTimeMillis() + "][SYNOPTIC][USER][@" + username + "][" + elapsed + "ms] Not found");
             return Optional.empty();
         } catch (WebClientResponseException e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[ERROR][SYNOPTIC][USER][@" + username + "][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][ERROR][SYNOPTIC][USER][@" + username + "][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
             return Optional.empty();
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[ERROR][SYNOPTIC][USER][@" + username + "][" + elapsed + "ms] " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][ERROR][SYNOPTIC][USER][@" + username + "][" + elapsed + "ms] " + e.getMessage());
             return Optional.empty();
         }
     }
@@ -122,19 +122,19 @@ public class SynopticClient {
 
             Optional<JsonNode> result = extractData(response);
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[SYNOPTIC][COMMUNITY][" + communityId + "][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
+            System.out.println("[" + System.currentTimeMillis() + "][SYNOPTIC][COMMUNITY][" + communityId + "][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
             return result;
         } catch (WebClientResponseException.NotFound e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[SYNOPTIC][COMMUNITY][" + communityId + "][" + elapsed + "ms] Not found");
+            System.out.println("[" + System.currentTimeMillis() + "][SYNOPTIC][COMMUNITY][" + communityId + "][" + elapsed + "ms] Not found");
             return Optional.empty();
         } catch (WebClientResponseException e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[ERROR][SYNOPTIC][COMMUNITY][" + communityId + "][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][ERROR][SYNOPTIC][COMMUNITY][" + communityId + "][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
             return Optional.empty();
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[ERROR][SYNOPTIC][COMMUNITY][" + communityId + "][" + elapsed + "ms] " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][ERROR][SYNOPTIC][COMMUNITY][" + communityId + "][" + elapsed + "ms] " + e.getMessage());
             return Optional.empty();
         }
     }
