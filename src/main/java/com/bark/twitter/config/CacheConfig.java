@@ -17,17 +17,17 @@ public class CacheConfig {
 
         cacheManager.registerCustomCache("tweets",
                 Caffeine.newBuilder()
-                        .expireAfterWrite(10, TimeUnit.MINUTES)
+                        .expireAfterWrite(15, TimeUnit.MINUTES)
                         .build());
 
         cacheManager.registerCustomCache("users",
                 Caffeine.newBuilder()
-                        .expireAfterWrite(10, TimeUnit.MINUTES)
+                        .expireAfterWrite(15, TimeUnit.MINUTES)
                         .build());
 
         cacheManager.registerCustomCache("communities",
                 Caffeine.newBuilder()
-                        .expireAfterWrite(10, TimeUnit.MINUTES)
+                        .expireAfterWrite(15, TimeUnit.MINUTES)
                         .build());
 
         return cacheManager;

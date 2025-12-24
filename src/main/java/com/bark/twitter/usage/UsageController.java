@@ -41,7 +41,7 @@ public class UsageController {
     }
 
     @GetMapping("/all")
-    @Operation(summary = "Get detailed usage statistics", description = "Returns usage breakdown with synoptic calls and cache hits by endpoint and day")
+    @Operation(summary = "Get detailed usage statistics", description = "Returns usage breakdown with cache misses and hits by endpoint and day")
     public DetailedUsageResponse getDetailedUsage(HttpServletRequest request) throws ExecutionException, InterruptedException {
         String apiKey = (String) request.getAttribute(ApiKeyInterceptor.API_KEY_ATTRIBUTE);
 
@@ -112,10 +112,10 @@ public class UsageController {
     private static final double COST_PER_COMMUNITY_SYNOPTIC = 0.00024;
 
     /**
-     * Aggregates usage and detailed records into endpoint -> day breakdown with synoptic/cache counts.
+     * Aggregates usage and detailed records into endpoint -> day breakdown with miss/hit counts.
      */
     private DetailedUsageResponse aggregateDetailedUsage(List<UsageRecord> usageRecords, List<DetailedUsageRecord> detailedRecords) {
-        // Structure: endpoint -> day -> {total, synoptic, cache}
+        // Structure: endpoint -> day -> {total, miss, hit}
         Map<String, Map<String, long[]>> aggregated = new HashMap<>();
 
         // Aggregate total counts from regular usage records
@@ -128,7 +128,7 @@ public class UsageController {
                     .computeIfAbsent(day, k -> new long[3])[0] += count;  // [0] = total
         }
 
-        // Aggregate synoptic and cache counts from detailed records
+        // Aggregate miss and hit counts from detailed records
         for (DetailedUsageRecord record : detailedRecords) {
             String endpoint = record.endpoint();
             String day = record.minuteBucket().substring(0, 10);
@@ -138,16 +138,16 @@ public class UsageController {
                     .computeIfAbsent(day, k -> new long[3]);
 
             if ("synoptic".equals(record.type())) {
-                counts[1] += count;  // [1] = synoptic
+                counts[1] += count;  // [1] = miss
             } else if ("cache".equals(record.type())) {
-                counts[2] += count;  // [2] = cache
+                counts[2] += count;  // [2] = hit
             }
         }
 
         // Build response
         long grandTotal = 0;
-        long grandSynoptic = 0;
-        long grandCache = 0;
+        long grandMiss = 0;
+        long grandHit = 0;
         double grandIncome = 0;
         double grandCost = 0;
         Map<String, DetailedUsageResponse.EndpointUsage> endpoints = new LinkedHashMap<>();
@@ -157,13 +157,13 @@ public class UsageController {
             Map<String, long[]> dayMap = endpointEntry.getValue();
 
             long endpointTotal = 0;
-            long endpointSynoptic = 0;
-            long endpointCache = 0;
+            long endpointMiss = 0;
+            long endpointHit = 0;
             double endpointIncome = 0;
             double endpointCost = 0;
             Map<String, DetailedUsageResponse.DayUsage> days = new LinkedHashMap<>();
 
-            double costPerSynoptic = switch (endpoint) {
+            double costPerMiss = switch (endpoint) {
                 case "/tweet" -> COST_PER_TWEET_SYNOPTIC;
                 case "/community" -> COST_PER_COMMUNITY_SYNOPTIC;
                 default -> COST_PER_USER_SYNOPTIC;
@@ -174,36 +174,36 @@ public class UsageController {
                 long[] counts = dayEntry.getValue();
 
                 long dayTotal = counts[0];
-                long daySynoptic = counts[1];
-                long dayCache = counts[2];
+                long dayMiss = counts[1];
+                long dayHit = counts[2];
                 double dayIncome = dayTotal * INCOME_PER_CALL;
-                double dayCost = daySynoptic * costPerSynoptic;
+                double dayCost = dayMiss * costPerMiss;
                 double dayProfit = dayIncome - dayCost;
 
                 endpointTotal += dayTotal;
-                endpointSynoptic += daySynoptic;
-                endpointCache += dayCache;
+                endpointMiss += dayMiss;
+                endpointHit += dayHit;
                 endpointIncome += dayIncome;
                 endpointCost += dayCost;
 
                 days.put(day, new DetailedUsageResponse.DayUsage(
-                        dayTotal, daySynoptic, dayCache, dayIncome, dayCost, dayProfit));
+                        dayTotal, dayMiss, dayHit, dayIncome, dayCost, dayProfit));
             }
 
             grandTotal += endpointTotal;
-            grandSynoptic += endpointSynoptic;
-            grandCache += endpointCache;
+            grandMiss += endpointMiss;
+            grandHit += endpointHit;
             grandIncome += endpointIncome;
             grandCost += endpointCost;
 
             double endpointProfit = endpointIncome - endpointCost;
             endpoints.put(endpoint, new DetailedUsageResponse.EndpointUsage(
-                    endpointTotal, endpointSynoptic, endpointCache,
+                    endpointTotal, endpointMiss, endpointHit,
                     endpointIncome, endpointCost, endpointProfit, days));
         }
 
         double grandProfit = grandIncome - grandCost;
-        return new DetailedUsageResponse(grandTotal, grandSynoptic, grandCache,
+        return new DetailedUsageResponse(grandTotal, grandMiss, grandHit,
                 grandIncome, grandCost, grandProfit, endpoints);
     }
 }

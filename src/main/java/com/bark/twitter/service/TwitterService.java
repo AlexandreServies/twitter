@@ -24,6 +24,7 @@ public class TwitterService {
     private final SynopticToAxiomMapper axiomMapper;
     private final VideoCacheWarmingService videoCacheWarmingService;
     private final DetailedUsageTrackingService detailedUsageTrackingService;
+    private final LatencyTracker latencyTracker;
     private final Cache tweetsCache;
     private final Cache usersCache;
     private final Cache communitiesCache;
@@ -32,11 +33,13 @@ public class TwitterService {
                           SynopticToAxiomMapper axiomMapper,
                           VideoCacheWarmingService videoCacheWarmingService,
                           DetailedUsageTrackingService detailedUsageTrackingService,
+                          LatencyTracker latencyTracker,
                           CacheManager cacheManager) {
         this.synopticClient = synopticClient;
         this.axiomMapper = axiomMapper;
         this.videoCacheWarmingService = videoCacheWarmingService;
         this.detailedUsageTrackingService = detailedUsageTrackingService;
+        this.latencyTracker = latencyTracker;
         this.tweetsCache = cacheManager.getCache("tweets");
         this.usersCache = cacheManager.getCache("users");
         this.communitiesCache = cacheManager.getCache("communities");
@@ -57,6 +60,7 @@ public class TwitterService {
             detailedUsageTrackingService.recordSynopticCall(apiKey, "/tweet");
         }
 
+        long start = System.currentTimeMillis();
         JsonNode synopticTweet = synopticClient.getTweet(tweetId)
                 .orElseThrow(() -> new NotFoundException("Tweet not found: " + tweetId));
 
@@ -65,6 +69,7 @@ public class TwitterService {
 
         AxionTweetDto tweetDto = axiomMapper.mapTweet(enriched);
         tweetsCache.put(tweetId, tweetDto);
+        latencyTracker.recordCacheMiss("/tweet", System.currentTimeMillis() - start);
 
         // Warm video cache async (fire-and-forget, no latency impact)
         videoCacheWarmingService.warmCacheAsync(tweetDto);
@@ -87,11 +92,13 @@ public class TwitterService {
             detailedUsageTrackingService.recordSynopticCall(apiKey, "/user");
         }
 
+        long start = System.currentTimeMillis();
         JsonNode synopticUser = synopticClient.getUser(userId)
                 .orElseThrow(() -> new NotFoundException("User not found: " + userId));
 
         AxionUserInfoDto userDto = axiomMapper.mapUser(synopticUser);
         usersCache.put(userId, userDto);
+        latencyTracker.recordCacheMiss("/user", System.currentTimeMillis() - start);
         return userDto;
     }
 
@@ -109,6 +116,8 @@ public class TwitterService {
         if (apiKey != null) {
             detailedUsageTrackingService.recordSynopticCall(apiKey, "/community");
         }
+
+        long start = System.currentTimeMillis();
 
         // First call: get community data
         JsonNode communityData = synopticClient.getCommunity(communityId)
@@ -132,6 +141,7 @@ public class TwitterService {
 
         AxionCommunityDto communityDto = axiomMapper.mapCommunity(communityData, creatorData);
         communitiesCache.put(communityId, communityDto);
+        latencyTracker.recordCacheMiss("/community", System.currentTimeMillis() - start);
         return communityDto;
     }
 
@@ -193,11 +203,13 @@ public class TwitterService {
             detailedUsageTrackingService.recordSynopticCall(apiKey, "/user");
         }
 
+        long start = System.currentTimeMillis();
         JsonNode synopticUser = synopticClient.getUserByUsername(username)
                 .orElseThrow(() -> new NotFoundException("User not found: @" + username));
 
         AxionUserInfoDto userDto = axiomMapper.mapUser(synopticUser);
         usersCache.put(cacheKey, userDto);
+        latencyTracker.recordCacheMiss("/user", System.currentTimeMillis() - start);
         return userDto;
     }
 
