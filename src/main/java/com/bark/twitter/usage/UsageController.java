@@ -108,7 +108,8 @@ public class UsageController {
 
     private static final double INCOME_PER_CALL = 0.00025;
     private static final double COST_PER_TWEET_SYNOPTIC = 0.0001;
-    private static final double COST_PER_OTHER_SYNOPTIC = 0.00012;
+    private static final double COST_PER_USER_SYNOPTIC = 0.00012;
+    private static final double COST_PER_COMMUNITY_SYNOPTIC = 0.00024;
 
     /**
      * Aggregates usage and detailed records into endpoint -> day breakdown with synoptic/cache counts.
@@ -162,7 +163,11 @@ public class UsageController {
             double endpointCost = 0;
             Map<String, DetailedUsageResponse.DayUsage> days = new LinkedHashMap<>();
 
-            double costPerSynoptic = "/tweet".equals(endpoint) ? COST_PER_TWEET_SYNOPTIC : COST_PER_OTHER_SYNOPTIC;
+            double costPerSynoptic = switch (endpoint) {
+                case "/tweet" -> COST_PER_TWEET_SYNOPTIC;
+                case "/community" -> COST_PER_COMMUNITY_SYNOPTIC;
+                default -> COST_PER_USER_SYNOPTIC;
+            };
 
             for (Map.Entry<String, long[]> dayEntry : dayMap.entrySet()) {
                 String day = dayEntry.getKey();

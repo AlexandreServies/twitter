@@ -1,15 +1,13 @@
 package com.bark.twitter.service;
 
 import com.bark.twitter.client.SynopticClient;
-import com.bark.twitter.client.TwitterApiClient;
 import com.bark.twitter.config.ApiKeyInterceptor;
 import com.bark.twitter.dto.axion.AxionCommunityDto;
 import com.bark.twitter.dto.axion.AxionTweetDto;
 import com.bark.twitter.dto.axion.AxionUserInfoDto;
 import com.bark.twitter.exception.NotFoundException;
 import com.bark.twitter.mapper.SynopticToAxiomMapper;
-import com.bark.twitter.mapper.SynopticToTwitterApiMapper;
-import com.bark.twitter.mapper.TwitterApiToAxionCommunityMapper;
+import com.bark.twitter.mapper.SynopticToAxionCommunityMapper;
 import com.bark.twitter.usage.DetailedUsageTrackingService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -24,24 +22,21 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 public class TwitterService {
 
     private final SynopticClient synopticClient;
-    private final TwitterApiClient twitterApiClient;
-    private final SynopticToTwitterApiMapper twitterApiMapper;
     private final SynopticToAxiomMapper axiomMapper;
-    private final TwitterApiToAxionCommunityMapper communityMapper;
+    private final SynopticToAxionCommunityMapper communityMapper;
     private final VideoCacheWarmingService videoCacheWarmingService;
     private final DetailedUsageTrackingService detailedUsageTrackingService;
     private final Cache tweetsCache;
     private final Cache usersCache;
     private final Cache communitiesCache;
 
-    public TwitterService(SynopticClient synopticClient, TwitterApiClient twitterApiClient,
-                          SynopticToTwitterApiMapper twitterApiMapper, SynopticToAxiomMapper axiomMapper,
-                          TwitterApiToAxionCommunityMapper communityMapper, VideoCacheWarmingService videoCacheWarmingService,
+    public TwitterService(SynopticClient synopticClient,
+                          SynopticToAxiomMapper axiomMapper,
+                          SynopticToAxionCommunityMapper communityMapper,
+                          VideoCacheWarmingService videoCacheWarmingService,
                           DetailedUsageTrackingService detailedUsageTrackingService,
                           CacheManager cacheManager) {
         this.synopticClient = synopticClient;
-        this.twitterApiClient = twitterApiClient;
-        this.twitterApiMapper = twitterApiMapper;
         this.axiomMapper = axiomMapper;
         this.communityMapper = communityMapper;
         this.videoCacheWarmingService = videoCacheWarmingService;
@@ -49,15 +44,6 @@ public class TwitterService {
         this.tweetsCache = cacheManager.getCache("tweets");
         this.usersCache = cacheManager.getCache("users");
         this.communitiesCache = cacheManager.getCache("communities");
-    }
-
-    private String getCurrentApiKey() {
-        ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-        if (attrs != null) {
-            HttpServletRequest request = attrs.getRequest();
-            return (String) request.getAttribute(ApiKeyInterceptor.API_KEY_ATTRIBUTE);
-        }
-        return null;
     }
 
     public AxionTweetDto getTweet(String tweetId) {
@@ -88,6 +74,69 @@ public class TwitterService {
         videoCacheWarmingService.warmCacheAsync(tweetDto);
 
         return tweetDto;
+    }
+
+    public AxionUserInfoDto getUser(String userId) {
+        String apiKey = getCurrentApiKey();
+        AxionUserInfoDto cached = usersCache.get(userId, AxionUserInfoDto.class);
+        if (cached != null) {
+            System.out.println("[" + System.currentTimeMillis() + "][USER][" + userId + "] Cache hit");
+            if (apiKey != null) {
+                detailedUsageTrackingService.recordCacheHit(apiKey, "/user");
+            }
+            return cached;
+        }
+
+        if (apiKey != null) {
+            detailedUsageTrackingService.recordSynopticCall(apiKey, "/user");
+        }
+
+        JsonNode synopticUser = synopticClient.getUser(userId)
+                .orElseThrow(() -> new NotFoundException("User not found: " + userId));
+
+        AxionUserInfoDto userDto = axiomMapper.mapUser(synopticUser);
+        usersCache.put(userId, userDto);
+        return userDto;
+    }
+
+    public AxionCommunityDto getCommunity(String communityId) {
+        String apiKey = getCurrentApiKey();
+        AxionCommunityDto cached = communitiesCache.get(communityId, AxionCommunityDto.class);
+        if (cached != null) {
+            System.out.println("[" + System.currentTimeMillis() + "][COMMUNITY][" + communityId + "] Cache hit");
+            if (apiKey != null) {
+                detailedUsageTrackingService.recordCacheHit(apiKey, "/community");
+            }
+            return cached;
+        }
+
+        if (apiKey != null) {
+            detailedUsageTrackingService.recordSynopticCall(apiKey, "/community");
+        }
+
+        // First call: get community data
+        JsonNode communityData = synopticClient.getCommunity(communityId)
+                .orElseThrow(() -> new NotFoundException("Community not found: " + communityId));
+
+        // Extract creator user ID from community data
+        JsonNode creatorNode = communityData.get("creator");
+        String creatorUserId = null;
+        if (creatorNode != null && !creatorNode.isNull()) {
+            JsonNode userIdNode = creatorNode.get("user_id");
+            if (userIdNode != null && !userIdNode.isNull()) {
+                creatorUserId = userIdNode.asText();
+            }
+        }
+
+        // Second call: get creator user data
+        JsonNode creatorData = null;
+        if (creatorUserId != null) {
+            creatorData = synopticClient.getUser(creatorUserId).orElse(null);
+        }
+
+        AxionCommunityDto communityDto = communityMapper.mapCommunity(communityData, creatorData);
+        communitiesCache.put(communityId, communityDto);
+        return communityDto;
     }
 
     private JsonNode transformMedia(JsonNode tweet) {
@@ -132,29 +181,6 @@ public class TwitterService {
         return tweet;
     }
 
-    public AxionUserInfoDto getUser(String userId) {
-        String apiKey = getCurrentApiKey();
-        AxionUserInfoDto cached = usersCache.get(userId, AxionUserInfoDto.class);
-        if (cached != null) {
-            System.out.println("[" + System.currentTimeMillis() + "][USER][" + userId + "] Cache hit");
-            if (apiKey != null) {
-                detailedUsageTrackingService.recordCacheHit(apiKey, "/user");
-            }
-            return cached;
-        }
-
-        if (apiKey != null) {
-            detailedUsageTrackingService.recordSynopticCall(apiKey, "/user");
-        }
-
-        JsonNode synopticUser = synopticClient.getUser(userId)
-                .orElseThrow(() -> new NotFoundException("User not found: " + userId));
-
-        AxionUserInfoDto userDto = axiomMapper.mapUser(synopticUser);
-        usersCache.put(userId, userDto);
-        return userDto;
-    }
-
     public AxionUserInfoDto getUserByUsername(String username) {
         String apiKey = getCurrentApiKey();
         String cacheKey = "username:" + username;
@@ -179,26 +205,12 @@ public class TwitterService {
         return userDto;
     }
 
-    public AxionCommunityDto getCommunity(String communityId) {
-        String apiKey = getCurrentApiKey();
-        AxionCommunityDto cached = communitiesCache.get(communityId, AxionCommunityDto.class);
-        if (cached != null) {
-            System.out.println("[" + System.currentTimeMillis() + "][COMMUNITY][" + communityId + "] Cache hit");
-            if (apiKey != null) {
-                detailedUsageTrackingService.recordCacheHit(apiKey, "/community");
-            }
-            return cached;
+    private String getCurrentApiKey() {
+        ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attrs != null) {
+            HttpServletRequest request = attrs.getRequest();
+            return (String) request.getAttribute(ApiKeyInterceptor.API_KEY_ATTRIBUTE);
         }
-
-        if (apiKey != null) {
-            detailedUsageTrackingService.recordSynopticCall(apiKey, "/community");
-        }
-
-        JsonNode communityInfo = twitterApiClient.getCommunity(communityId)
-                .orElseThrow(() -> new NotFoundException("Community not found: " + communityId));
-
-        AxionCommunityDto communityDto = communityMapper.mapCommunity(communityInfo);
-        communitiesCache.put(communityId, communityDto);
-        return communityDto;
+        return null;
     }
 }
