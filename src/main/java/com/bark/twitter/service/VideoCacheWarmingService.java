@@ -27,7 +27,7 @@ import java.util.concurrent.Executors;
 @Service
 public class VideoCacheWarmingService {
 
-    private static final String PROXY_HOST = "d7nmnehv38vh6.cloudfront.net";
+    private static final String PROXY_HOST = "twproxy.twproxy.workers.dev";
     private static final int MAX_TRACKED_URLS = 10000;
 
     private final HttpClient httpClient;

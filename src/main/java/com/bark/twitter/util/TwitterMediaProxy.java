@@ -10,7 +10,7 @@ import java.nio.charset.StandardCharsets;
  */
 public class TwitterMediaProxy {
 
-    private static final String PROXY_BASE_URL = "https://d7nmnehv38vh6.cloudfront.net/";
+    private static final String PROXY_BASE_URL = "https://twproxy.twproxy.workers.dev/";
 
     private static final String VIDEO_HOST = "video.twimg.com";
 
