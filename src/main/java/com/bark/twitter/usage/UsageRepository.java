@@ -77,33 +77,47 @@ public class UsageRepository {
     /**
      * Queries usage data for a specific API key within a date range.
      * Returns all minute-level records for aggregation.
+     * Filters by date range in application code since SK starts with endpoint.
      */
     public CompletableFuture<List<UsageRecord>> queryUsage(String apiKey, String startDate, String endDate) {
-        String pk = apiKey;
+        return queryUsagePaginated(apiKey, startDate, endDate, null, new ArrayList<>());
+    }
 
-        QueryRequest request = QueryRequest.builder()
+    private CompletableFuture<List<UsageRecord>> queryUsagePaginated(
+            String apiKey, String startDate, String endDate,
+            Map<String, AttributeValue> lastKey, List<UsageRecord> accumulated) {
+
+        QueryRequest.Builder requestBuilder = QueryRequest.builder()
                 .tableName(tableName)
-                .keyConditionExpression("pk = :pk AND sk BETWEEN :start AND :end")
+                .keyConditionExpression("pk = :pk")
                 .expressionAttributeValues(Map.of(
-                        ":pk", AttributeValue.builder().s(pk).build(),
-                        ":start", AttributeValue.builder().s(startDate).build(),
-                        ":end", AttributeValue.builder().s(endDate + "~").build()  // ~ is after Z in ASCII
-                ))
-                .build();
+                        ":pk", AttributeValue.builder().s(apiKey).build()
+                ));
 
-        return dynamoDbClient.query(request)
-                .thenApply(response -> {
-                    List<UsageRecord> records = new ArrayList<>();
+        if (lastKey != null) {
+            requestBuilder.exclusiveStartKey(lastKey);
+        }
+
+        return dynamoDbClient.query(requestBuilder.build())
+                .thenCompose(response -> {
                     for (Map<String, AttributeValue> item : response.items()) {
                         String sk = item.get("sk").s();
                         String[] parts = sk.split("#", 2);
                         String endpoint = parts[0];
                         String minuteBucket = parts.length > 1 ? parts[1] : "";
-                        long count = Long.parseLong(item.get("count").n());
 
-                        records.add(new UsageRecord(apiKey, endpoint, minuteBucket, count));
+                        // Filter by date range (minuteBucket format: 2025-12-17T10:30)
+                        String dateOnly = minuteBucket.length() >= 10 ? minuteBucket.substring(0, 10) : "";
+                        if (dateOnly.compareTo(startDate) >= 0 && dateOnly.compareTo(endDate) <= 0) {
+                            long count = Long.parseLong(item.get("count").n());
+                            accumulated.add(new UsageRecord(apiKey, endpoint, minuteBucket, count));
+                        }
                     }
-                    return records;
+
+                    if (response.lastEvaluatedKey() != null && !response.lastEvaluatedKey().isEmpty()) {
+                        return queryUsagePaginated(apiKey, startDate, endDate, response.lastEvaluatedKey(), accumulated);
+                    }
+                    return CompletableFuture.completedFuture(accumulated);
                 });
     }
 
