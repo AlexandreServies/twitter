@@ -3,12 +3,16 @@ package com.bark.twitter.usage;
 import com.bark.twitter.config.ApiKeyInterceptor;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,12 +35,27 @@ public class UsageController {
         this.usageRepository = usageRepository;
     }
 
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
     @GetMapping
-    @Operation(summary = "Get usage statistics", description = "Returns usage breakdown by endpoint, day, and hour for the authenticated API key")
-    public UsageResponse getUsage(HttpServletRequest request) throws ExecutionException, InterruptedException {
+    @Operation(summary = "Get usage statistics", description = "Returns usage breakdown by endpoint, day, and hour for the authenticated API key. Defaults to last 30 days if no date range specified.")
+    public UsageResponse getUsage(
+            HttpServletRequest request,
+            @Parameter(description = "Start date (inclusive) in yyyy-MM-dd format. Defaults to 30 days ago.")
+            @RequestParam(required = false) String from,
+            @Parameter(description = "End date (inclusive) in yyyy-MM-dd format. Defaults to today.")
+            @RequestParam(required = false) String to
+    ) throws ExecutionException, InterruptedException {
         String apiKey = (String) request.getAttribute(ApiKeyInterceptor.API_KEY_ATTRIBUTE);
 
-        List<UsageRecord> records = usageRepository.queryAllUsage(apiKey).get();
+        // Default to last 30 days if not specified
+        LocalDate endDate = (to != null) ? LocalDate.parse(to, DATE_FORMAT) : LocalDate.now();
+        LocalDate startDate = (from != null) ? LocalDate.parse(from, DATE_FORMAT) : endDate.minusDays(29);
+
+        String startStr = startDate.format(DATE_FORMAT);
+        String endStr = endDate.format(DATE_FORMAT);
+
+        List<UsageRecord> records = usageRepository.queryUsage(apiKey, startStr, endStr).get();
 
         return aggregateUsage(records);
     }
