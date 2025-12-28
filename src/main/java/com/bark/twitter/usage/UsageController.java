@@ -1,6 +1,7 @@
 package com.bark.twitter.usage;
 
 import com.bark.twitter.config.ApiKeyInterceptor;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -40,8 +41,8 @@ public class UsageController {
         return aggregateUsage(records);
     }
 
+    @Hidden
     @GetMapping("/all")
-    @Operation(summary = "Get detailed usage statistics", description = "Returns usage breakdown with cache misses and hits by endpoint and day")
     public DetailedUsageResponse getDetailedUsage(HttpServletRequest request) throws ExecutionException, InterruptedException {
         String apiKey = (String) request.getAttribute(ApiKeyInterceptor.API_KEY_ATTRIBUTE);
 
