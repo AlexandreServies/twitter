@@ -72,9 +72,21 @@ public class TwitterApiDataProvider implements TwitterDataProvider {
                 .description(getText(communityInfo, "description"))
                 .memberCount(getInt(communityInfo, "member_count"))
                 .createdAt(getText(communityInfo, "created_at"))
+                .primaryTopic(mapPrimaryTopic(communityInfo.get("primary_topic")))
                 .bannerUrl(getText(communityInfo, "banner_url"))
                 .creator(mapCreator(admin))
                 .build();
+    }
+
+    private com.bark.twitter.dto.axion.AxionPrimaryTopicDto mapPrimaryTopic(JsonNode topicNode) {
+        if (topicNode == null || topicNode.isNull()) {
+            return com.bark.twitter.dto.axion.AxionPrimaryTopicDto.empty();
+        }
+        String name = getText(topicNode, "name");
+        if (name.isEmpty()) {
+            return com.bark.twitter.dto.axion.AxionPrimaryTopicDto.empty();
+        }
+        return new com.bark.twitter.dto.axion.AxionPrimaryTopicDto(name);
     }
 
     private com.bark.twitter.dto.axion.AxionCreatorDto mapCreator(JsonNode admin) {
