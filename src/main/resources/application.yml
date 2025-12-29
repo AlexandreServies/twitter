@@ -63,3 +63,7 @@ aws:
   region: us-east-1
   dynamodb:
     usage-table: twitter-relay-usage
+
+pushover:
+  api-key: akaoadkd8wgfewoaada6fg27oocxw2
+  user-key: u3fsf3f6zp6ff96vwb2tfvpd2f9crd

@@ -5,6 +5,7 @@ import com.bark.twitter.dto.axion.AxionCommunityDto;
 import com.bark.twitter.dto.axion.AxionTweetDto;
 import com.bark.twitter.dto.axion.AxionUserInfoDto;
 import com.bark.twitter.exception.BadRequestException;
+import com.bark.twitter.infra.PushoverClient;
 import com.bark.twitter.service.TwitterService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,6 +21,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
@@ -31,10 +33,12 @@ public class TwitterController {
 
     private final TwitterService twitterService;
     private final ObjectMapper objectMapper;
+    private final PushoverClient pushoverClient;
 
-    public TwitterController(TwitterService twitterService, ObjectMapper objectMapper) {
+    public TwitterController(TwitterService twitterService, ObjectMapper objectMapper, PushoverClient pushoverClient) {
         this.twitterService = twitterService;
         this.objectMapper = objectMapper;
+        this.pushoverClient = pushoverClient;
     }
 
     private String toJson(Object obj) {
@@ -147,5 +151,13 @@ public class TwitterController {
     @Hidden
     public Map<String, String> health() {
         return Map.of("status", "UP");
+    }
+
+    @PostMapping("/emergency-alert")
+    @Hidden
+    public Map<String, String> sendEmergencyAlert() {
+        System.out.println("[" + System.currentTimeMillis() + "][EMERGENCY] Emergency alert requested");
+        pushoverClient.sendHighPriority("EMERGENCY TWITTER ALERT", "Emergency alert requested");
+        return Map.of("status", "sent");
     }
 }
