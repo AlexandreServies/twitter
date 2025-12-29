@@ -50,6 +50,11 @@ synoptic:
 twitterapi:
   api-key: new1_a8b0f543e0fc4a628a523c46e15b2575
 
+# Twitter data source configuration
+# Options: SYNOPTIC, TWITTERAPI
+twitter:
+  data-source: TWITTERAPI
+
 security:
   api-keys:
     - 2e54206b02cb6ed997f42f5bb10d7d19ff59e80f19b334339d38d08a92fb1b71 # AXIOM

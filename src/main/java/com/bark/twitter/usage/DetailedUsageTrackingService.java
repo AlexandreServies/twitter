@@ -24,9 +24,9 @@ public class DetailedUsageTrackingService {
     }
 
     /**
-     * Records a synoptic API call. Zero-latency impact.
+     * Records an API call (cache miss, fetched from upstream provider). Zero-latency impact.
      */
-    public void recordSynopticCall(String apiKeyHash, String endpoint) {
+    public void recordApiCall(String apiKeyHash, String endpoint) {
         DetailedUsageKey key = DetailedUsageKey.synoptic(apiKeyHash, endpoint);
         accumulator.computeIfAbsent(key, k -> new LongAdder()).increment();
     }
