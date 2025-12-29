@@ -50,10 +50,14 @@ synoptic:
 twitterapi:
   api-key: new1_a8b0f543e0fc4a628a523c46e15b2575
 
-# Twitter data source configuration
+# Twitter data source configuration per endpoint
 # Options: SYNOPTIC, TWITTERAPI
+# These are the PRIMARY sources - fallback happens automatically on issues
 twitter:
-  data-source: TWITTERAPI
+  sources:
+    tweet: TWITTERAPI
+    user: TWITTERAPI
+    community: TWITTERAPI
 
 security:
   api-keys:
