@@ -55,9 +55,9 @@ twitterapi:
 # These are the PRIMARY sources - fallback happens automatically on issues
 twitter:
   sources:
-    tweet: TWITTERAPI
-    user: TWITTERAPI
-    community: TWITTERAPI
+    tweet: SYNOPTIC
+    user: SYNOPTIC
+    community: SYNOPTIC
 
 security:
   api-keys:
