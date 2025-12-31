@@ -66,10 +66,10 @@ public class TwitterController {
     })
     public AxionTweetDto getTweet(@Parameter(description = "Tweet ID") @PathVariable String id) {
         long start = System.currentTimeMillis();
-        System.out.println("[" + start + "][REST][TWEET][" + id + "] GET /tweet/" + id);
+        System.out.println("[" + start + "][REQUEST][TWEET][" + id + "] GET /tweet/" + id);
         AxionTweetDto response = twitterService.getTweet(id);
         long duration = System.currentTimeMillis() - start;
-        System.out.println("[" + System.currentTimeMillis() + "][REST][TWEET][" + id + "][" + duration + "ms] " + toJson(response));
+        System.out.println("[" + System.currentTimeMillis() + "][RESPONSE][TWEET][" + id + "][" + duration + "ms] " + toJson(response));
         return response;
     }
 
@@ -93,7 +93,7 @@ public class TwitterController {
     })
     public AxionUserInfoDto getUser(@Parameter(description = "Numeric user ID or @handle") @PathVariable String idOrHandle) {
         long start = System.currentTimeMillis();
-        System.out.println("[" + start + "][REST][USER][" + idOrHandle + "] GET /user/" + idOrHandle);
+        System.out.println("[" + start + "][REQUEST][USER][" + idOrHandle + "] GET /user/" + idOrHandle);
 
         AxionUserInfoDto response;
         if (idOrHandle.startsWith("@")) {
@@ -107,7 +107,7 @@ public class TwitterController {
         }
 
         long duration = System.currentTimeMillis() - start;
-        System.out.println("[" + System.currentTimeMillis() + "][REST][USER][" + idOrHandle + "][" + duration + "ms] " + toJson(response));
+        System.out.println("[" + System.currentTimeMillis() + "][RESPONSE][USER][" + idOrHandle + "][" + duration + "ms] " + toJson(response));
         return response;
     }
 
@@ -140,10 +140,10 @@ public class TwitterController {
     })
     public AxionCommunityDto getCommunity(@Parameter(description = "Community ID") @PathVariable String id) {
         long start = System.currentTimeMillis();
-        System.out.println("[" + start + "][REST][COMMUNITY][" + id + "] GET /community/" + id);
+        System.out.println("[" + start + "][REQUEST][COMMUNITY][" + id + "] GET /community/" + id);
         AxionCommunityDto response = twitterService.getCommunity(id);
         long duration = System.currentTimeMillis() - start;
-        System.out.println("[" + System.currentTimeMillis() + "][REST][COMMUNITY][" + id + "][" + duration + "ms] " + toJson(response));
+        System.out.println("[" + System.currentTimeMillis() + "][RESPONSE][COMMUNITY][" + id + "][" + duration + "ms] " + toJson(response));
         return response;
     }
 
