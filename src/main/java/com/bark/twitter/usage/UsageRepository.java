@@ -69,7 +69,7 @@ public class UsageRepository {
         return dynamoDbClient.updateItem(request)
                 .thenAccept(response -> {})
                 .exceptionally(e -> {
-                    System.err.println("[USAGE] Failed to update DynamoDB: " + e.getMessage());
+                    System.err.println("[" + System.currentTimeMillis() + "][USAGE] Failed to update DynamoDB: " + e.getMessage());
                     return null;
                 });
     }
@@ -201,7 +201,7 @@ public class UsageRepository {
         return dynamoDbClient.updateItem(request)
                 .thenAccept(response -> {})
                 .exceptionally(e -> {
-                    System.err.println("[USAGE] Failed to update detailed DynamoDB: " + e.getMessage());
+                    System.err.println("[" + System.currentTimeMillis() + "][USAGE] Failed to update detailed DynamoDB: " + e.getMessage());
                     return null;
                 });
     }

@@ -138,7 +138,6 @@ public class SmartTwitterDataProvider implements TwitterDataProvider {
             result = activeCall.get();
             long latency = System.currentTimeMillis() - start;
             healthMonitor.recordLatency(activeSource, endpoint, latency);
-            System.out.println("[SMART][" + endpoint + "][" + id + "] " + activeSource + " success in " + latency + "ms");
         } catch (NotFoundException e) {
             // Not found is not an error for health purposes, just rethrow
             long latency = System.currentTimeMillis() - start;
@@ -147,7 +146,7 @@ public class SmartTwitterDataProvider implements TwitterDataProvider {
         } catch (Exception e) {
             long latency = System.currentTimeMillis() - start;
             healthMonitor.recordError(activeSource, endpoint);
-            System.out.println("[SMART][" + endpoint + "][" + id + "] " + activeSource + " ERROR in " + latency + "ms: " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][SMART][" + endpoint + "][" + id + "] " + activeSource + " ERROR: " + e.getMessage());
             sourceManager.triggerHealthCheck(endpoint);
             throw e;
         }
@@ -183,17 +182,14 @@ public class SmartTwitterDataProvider implements TwitterDataProvider {
             if (result != null && cacheResultCallback != null) {
                 cacheResultCallback.accept(result);
             }
-
-            System.out.println("[SHADOW][" + endpoint + "][" + id + "] " + primarySource + " success in " + latency + "ms");
         } catch (NotFoundException e) {
             // Not found is not an error for health purposes
             long latency = System.currentTimeMillis() - start;
             healthMonitor.recordLatency(primarySource, endpoint, latency);
-            System.out.println("[SHADOW][" + endpoint + "][" + id + "] " + primarySource + " not found in " + latency + "ms");
         } catch (Exception e) {
             long latency = System.currentTimeMillis() - start;
             healthMonitor.recordError(primarySource, endpoint);
-            System.out.println("[SHADOW][" + endpoint + "][" + id + "] " + primarySource + " ERROR in " + latency + "ms: " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][SHADOW][" + endpoint + "][" + id + "] " + primarySource + " ERROR: " + e.getMessage());
         }
 
         // Trigger health check after shadow request

@@ -53,7 +53,7 @@ public class EndpointSourceManager {
      */
     public void configurePrimarySource(Endpoint endpoint, Source source) {
         endpointStates.put(endpoint, new EndpointState(source));
-        System.out.println("[SOURCE_MANAGER][" + endpoint + "] Configured primary source: " + source);
+        System.out.println("[" + System.currentTimeMillis() + "][SOURCE_MANAGER][" + endpoint + "] Configured primary source: " + source);
     }
 
     /**
@@ -117,7 +117,7 @@ public class EndpointSourceManager {
                     if (endpointState.state.compareAndSet(State.NORMAL, State.FALLBACK)) {
                         String message = "[" + endpoint + "] Primary " + primary + " has issues. " +
                                 healthMonitor.getHealthSummary(primary, endpoint);
-                        System.out.println("[SOURCE_MANAGER] FALLBACK triggered! " + message);
+                        System.out.println("[" + System.currentTimeMillis() + "][SOURCE_MANAGER] FALLBACK triggered! " + message);
 
                         // Send high-priority Pushover notification
                         pushoverClient.sendHighPriority(
@@ -132,7 +132,7 @@ public class EndpointSourceManager {
                 if (healthMonitor.isHealthy(primary, endpoint)) {
                     if (endpointState.state.compareAndSet(State.FALLBACK, State.RECOVERING)) {
                         endpointState.recoveryStartTime = System.currentTimeMillis();
-                        System.out.println("[SOURCE_MANAGER][" + endpoint + "] RECOVERING started. " +
+                        System.out.println("[" + System.currentTimeMillis() + "][SOURCE_MANAGER][" + endpoint + "] RECOVERING started. " +
                                 "Primary " + primary + " is healthy. " +
                                 healthMonitor.getHealthSummary(primary, endpoint));
                     }
@@ -144,7 +144,7 @@ public class EndpointSourceManager {
                     // Primary degraded again, go back to FALLBACK
                     if (endpointState.state.compareAndSet(State.RECOVERING, State.FALLBACK)) {
                         endpointState.recoveryStartTime = 0;
-                        System.out.println("[SOURCE_MANAGER][" + endpoint + "] Recovery aborted! " +
+                        System.out.println("[" + System.currentTimeMillis() + "][SOURCE_MANAGER][" + endpoint + "] Recovery aborted! " +
                                 "Primary " + primary + " degraded again. " +
                                 healthMonitor.getHealthSummary(primary, endpoint));
                     }
@@ -152,7 +152,7 @@ public class EndpointSourceManager {
                     // Primary healthy for full recovery period -> switch back to NORMAL
                     if (endpointState.state.compareAndSet(State.RECOVERING, State.NORMAL)) {
                         endpointState.recoveryStartTime = 0;
-                        System.out.println("[SOURCE_MANAGER][" + endpoint + "] Switched back to NORMAL. " +
+                        System.out.println("[" + System.currentTimeMillis() + "][SOURCE_MANAGER][" + endpoint + "] Switched back to NORMAL. " +
                                 "Primary " + primary + " healthy for 1+ minute. " +
                                 healthMonitor.getHealthSummary(primary, endpoint));
                     }

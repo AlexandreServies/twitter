@@ -30,9 +30,9 @@ public class PushoverClient {
         this.enabled = !apiKey.isEmpty() && !userKey.isEmpty();
 
         if (enabled) {
-            System.out.println("[PUSHOVER] Client initialized");
+            System.out.println("[" + System.currentTimeMillis() + "][PUSHOVER] Client initialized");
         } else {
-            System.out.println("[PUSHOVER] Client disabled (missing api-key or user-key)");
+            System.out.println("[" + System.currentTimeMillis() + "][PUSHOVER] Client disabled (missing api-key or user-key)");
         }
     }
 
@@ -55,7 +55,7 @@ public class PushoverClient {
      */
     public void send(String title, String message, int priority) {
         if (!enabled) {
-            System.out.println("[PUSHOVER] Notification skipped (disabled): " + title);
+            System.out.println("[" + System.currentTimeMillis() + "][PUSHOVER] Notification skipped (disabled): " + title);
             return;
         }
 
@@ -74,11 +74,11 @@ public class PushoverClient {
                     .retrieve()
                     .bodyToMono(String.class)
                     .subscribe(
-                            response -> System.out.println("[PUSHOVER] Notification sent: " + title),
-                            error -> System.err.println("[PUSHOVER] Failed to send notification: " + error.getMessage())
+                            response -> System.out.println("[" + System.currentTimeMillis() + "][PUSHOVER] Notification sent: " + title),
+                            error -> System.err.println("[" + System.currentTimeMillis() + "][PUSHOVER] Failed to send notification: " + error.getMessage())
                     );
         } catch (Exception e) {
-            System.err.println("[PUSHOVER] Error sending notification: " + e.getMessage());
+            System.err.println("[" + System.currentTimeMillis() + "][PUSHOVER] Error sending notification: " + e.getMessage());
         }
     }
 }

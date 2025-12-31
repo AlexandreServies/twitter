@@ -9,12 +9,14 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 
 /**
  * Monitors health metrics (errors and latency) for each data source per endpoint.
- * Uses rolling 1-minute windows for all calculations.
+ * Uses rolling 3-minute windows for all calculations.
+ * Requires minimum 3 minutes of data before triggering fallback.
  */
 @Component
 public class SourceHealthMonitor {
 
-    private static final long WINDOW_MS = 60_000; // 1 minute rolling window
+    private static final long WINDOW_MS = 180_000; // 3 minute rolling window
+    private static final long MIN_DATA_AGE_MS = 180_000; // Need 3 minutes of data before triggering fallback
 
     // Thresholds for detecting issues (trigger fallback)
     private static final int ERROR_THRESHOLD = 10;
@@ -27,6 +29,7 @@ public class SourceHealthMonitor {
 
     private final Map<SourceEndpointKey, Deque<TimestampedMetric>> latencyMetrics = new ConcurrentHashMap<>();
     private final Map<SourceEndpointKey, Deque<Long>> errorTimestamps = new ConcurrentHashMap<>();
+    private final Map<SourceEndpointKey, Long> firstDataTimestamp = new ConcurrentHashMap<>();
 
     public enum Endpoint {
         TWEET, USER, COMMUNITY
@@ -45,8 +48,10 @@ public class SourceHealthMonitor {
      */
     public void recordLatency(Source source, Endpoint endpoint, long latencyMs) {
         SourceEndpointKey key = new SourceEndpointKey(source, endpoint);
+        long now = System.currentTimeMillis();
+        firstDataTimestamp.putIfAbsent(key, now);
         Deque<TimestampedMetric> deque = latencyMetrics.computeIfAbsent(key, k -> new ConcurrentLinkedDeque<>());
-        deque.addLast(new TimestampedMetric(System.currentTimeMillis(), latencyMs));
+        deque.addLast(new TimestampedMetric(now, latencyMs));
         pruneOldMetrics(deque);
     }
 
@@ -62,10 +67,17 @@ public class SourceHealthMonitor {
 
     /**
      * Checks if the source is experiencing issues (should trigger fallback).
-     * Issues = 10+ errors in last minute OR median latency above threshold.
+     * Issues = 10+ errors in last 3 minutes OR median latency above threshold.
+     * Requires at least 3 minutes of data before triggering.
      */
     public boolean hasIssues(Source source, Endpoint endpoint) {
         SourceEndpointKey key = new SourceEndpointKey(source, endpoint);
+
+        // Don't trigger fallback until we have enough data (3 minutes)
+        Long firstData = firstDataTimestamp.get(key);
+        if (firstData == null || System.currentTimeMillis() - firstData < MIN_DATA_AGE_MS) {
+            return false; // Not enough data yet
+        }
 
         // Check error count
         int errorCount = getErrorCount(key);
