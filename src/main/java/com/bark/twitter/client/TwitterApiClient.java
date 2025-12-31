@@ -34,19 +34,19 @@ public class TwitterApiClient {
 
             Optional<JsonNode> result = extractFirstFromTweets(response);
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][TWITTERAPI][TWEET][" + tweetId + "][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
+            System.out.println("[" + System.currentTimeMillis() + "][" + tweetId + "][TWITTERAPI][TWEET][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
             return result;
         } catch (WebClientResponseException.NotFound e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][TWITTERAPI][TWEET][" + tweetId + "][" + elapsed + "ms] Not found");
+            System.out.println("[" + System.currentTimeMillis() + "][" + tweetId + "][TWITTERAPI][TWEET][" + elapsed + "ms] Not found");
             return Optional.empty();
         } catch (WebClientResponseException e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][ERROR][TWITTERAPI][TWEET][" + tweetId + "][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][" + tweetId + "][ERROR][TWITTERAPI][TWEET][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
             return Optional.empty();
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][ERROR][TWITTERAPI][TWEET][" + tweetId + "][" + elapsed + "ms] " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][" + tweetId + "][ERROR][TWITTERAPI][TWEET][" + elapsed + "ms] " + e.getMessage());
             return Optional.empty();
         }
     }
@@ -65,19 +65,19 @@ public class TwitterApiClient {
 
             Optional<JsonNode> result = extractUserData(response);
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][TWITTERAPI][USER][" + userId + "][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
+            System.out.println("[" + System.currentTimeMillis() + "][" + userId + "][TWITTERAPI][USER][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
             return result;
         } catch (WebClientResponseException.NotFound e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][TWITTERAPI][USER][" + userId + "][" + elapsed + "ms] Not found");
+            System.out.println("[" + System.currentTimeMillis() + "][" + userId + "][TWITTERAPI][USER][" + elapsed + "ms] Not found");
             return Optional.empty();
         } catch (WebClientResponseException e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][ERROR][TWITTERAPI][USER][" + userId + "][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][" + userId + "][ERROR][TWITTERAPI][USER][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
             return Optional.empty();
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][ERROR][TWITTERAPI][USER][" + userId + "][" + elapsed + "ms] " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][" + userId + "][ERROR][TWITTERAPI][USER][" + elapsed + "ms] " + e.getMessage());
             return Optional.empty();
         }
     }
@@ -96,19 +96,19 @@ public class TwitterApiClient {
 
             Optional<JsonNode> result = extractUserData(response);
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][TWITTERAPI][USER][@" + username + "][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
+            System.out.println("[" + System.currentTimeMillis() + "][@" + username + "][TWITTERAPI][USER][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
             return result;
         } catch (WebClientResponseException.NotFound e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][TWITTERAPI][USER][@" + username + "][" + elapsed + "ms] Not found");
+            System.out.println("[" + System.currentTimeMillis() + "][@" + username + "][TWITTERAPI][USER][" + elapsed + "ms] Not found");
             return Optional.empty();
         } catch (WebClientResponseException e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][ERROR][TWITTERAPI][USER][@" + username + "][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][@" + username + "][ERROR][TWITTERAPI][USER][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
             return Optional.empty();
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][ERROR][TWITTERAPI][USER][@" + username + "][" + elapsed + "ms] " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][@" + username + "][ERROR][TWITTERAPI][USER][" + elapsed + "ms] " + e.getMessage());
             return Optional.empty();
         }
     }
@@ -127,15 +127,15 @@ public class TwitterApiClient {
 
             Optional<JsonNode> result = extractCommunityInfo(response);
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][TWITTERAPI][COMMUNITY][" + communityId + "][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
+            System.out.println("[" + System.currentTimeMillis() + "][" + communityId + "][TWITTERAPI][COMMUNITY][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
             return result;
         } catch (WebClientResponseException e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][ERROR][TWITTERAPI][COMMUNITY][" + communityId + "][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][" + communityId + "][ERROR][TWITTERAPI][COMMUNITY][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
             return Optional.empty();
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][ERROR][TWITTERAPI][COMMUNITY][" + communityId + "][" + elapsed + "ms] " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][" + communityId + "][ERROR][TWITTERAPI][COMMUNITY][" + elapsed + "ms] " + e.getMessage());
             return Optional.empty();
         }
     }

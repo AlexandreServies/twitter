@@ -146,7 +146,7 @@ public class SmartTwitterDataProvider implements TwitterDataProvider {
         } catch (Exception e) {
             long latency = System.currentTimeMillis() - start;
             healthMonitor.recordError(activeSource, endpoint);
-            System.out.println("[" + System.currentTimeMillis() + "][SMART][" + endpoint + "][" + id + "] " + activeSource + " ERROR: " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][" + id + "][SMART][" + endpoint + "] " + activeSource + " ERROR: " + e.getMessage());
             sourceManager.triggerHealthCheck(endpoint);
             throw e;
         }
@@ -189,7 +189,7 @@ public class SmartTwitterDataProvider implements TwitterDataProvider {
         } catch (Exception e) {
             long latency = System.currentTimeMillis() - start;
             healthMonitor.recordError(primarySource, endpoint);
-            System.out.println("[" + System.currentTimeMillis() + "][SHADOW][" + endpoint + "][" + id + "] " + primarySource + " ERROR: " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][" + id + "][SHADOW][" + endpoint + "] " + primarySource + " ERROR: " + e.getMessage());
         }
 
         // Trigger health check after shadow request

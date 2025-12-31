@@ -42,7 +42,7 @@ public class TwitterService {
         String apiKey = getCurrentApiKey();
         AxionTweetDto cached = tweetsCache.get(tweetId, AxionTweetDto.class);
         if (cached != null) {
-            System.out.println("[" + System.currentTimeMillis() + "][TWEET][" + tweetId + "] Cache hit");
+            System.out.println("[" + System.currentTimeMillis() + "][" + tweetId + "][CACHE_HIT][TWEET]");
             if (apiKey != null) {
                 detailedUsageTrackingService.recordCacheHit(apiKey, "/tweet");
             }
@@ -68,7 +68,7 @@ public class TwitterService {
         String apiKey = getCurrentApiKey();
         AxionUserInfoDto cached = usersCache.get(userId, AxionUserInfoDto.class);
         if (cached != null) {
-            System.out.println("[" + System.currentTimeMillis() + "][USER][" + userId + "] Cache hit");
+            System.out.println("[" + System.currentTimeMillis() + "][" + userId + "][CACHE_HIT][USER]");
             if (apiKey != null) {
                 detailedUsageTrackingService.recordCacheHit(apiKey, "/user");
             }
@@ -90,7 +90,7 @@ public class TwitterService {
         String apiKey = getCurrentApiKey();
         AxionCommunityDto cached = communitiesCache.get(communityId, AxionCommunityDto.class);
         if (cached != null) {
-            System.out.println("[" + System.currentTimeMillis() + "][COMMUNITY][" + communityId + "] Cache hit");
+            System.out.println("[" + System.currentTimeMillis() + "][" + communityId + "][CACHE_HIT][COMMUNITY]");
             if (apiKey != null) {
                 detailedUsageTrackingService.recordCacheHit(apiKey, "/community");
             }
@@ -113,7 +113,7 @@ public class TwitterService {
         String cacheKey = "username:" + username;
         AxionUserInfoDto cached = usersCache.get(cacheKey, AxionUserInfoDto.class);
         if (cached != null) {
-            System.out.println("[" + System.currentTimeMillis() + "][USER][@" + username + "] Cache hit");
+            System.out.println("[" + System.currentTimeMillis() + "][@" + username + "][CACHE_HIT][USER]");
             if (apiKey != null) {
                 detailedUsageTrackingService.recordCacheHit(apiKey, "/user");
             }
