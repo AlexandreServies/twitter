@@ -28,8 +28,8 @@ public class MetricsController {
     }
 
     /**
-     * Cache-miss latencies with total request counts.
-     * Latency metrics exclude cache hits to show true Synoptic call performance.
+     * Latency metrics for all endpoints.
+     * Shows cache-miss latencies if available, otherwise falls back to overall request latencies.
      */
     @GetMapping("/metrics")
     public Map<String, Object> getMetrics() {
@@ -55,12 +55,17 @@ public class MetricsController {
             Map<String, Object> endpointMetrics = new LinkedHashMap<>();
             endpointMetrics.put("count", totalCount);
 
-            if (cacheMissTimer != null && cacheMissTimer.count() > 0) {
-                endpointMetrics.put("meanMs", cacheMissTimer.mean(TimeUnit.MILLISECONDS));
-                endpointMetrics.put("maxMs", cacheMissTimer.max(TimeUnit.MILLISECONDS));
-                endpointMetrics.put("p50Ms", cacheMissTimer.percentile(0.5, TimeUnit.MILLISECONDS));
-                endpointMetrics.put("p95Ms", cacheMissTimer.percentile(0.95, TimeUnit.MILLISECONDS));
-                endpointMetrics.put("p99Ms", cacheMissTimer.percentile(0.99, TimeUnit.MILLISECONDS));
+            // Use cache-miss timer if available, otherwise use request timer
+            Timer latencyTimer = (cacheMissTimer != null && cacheMissTimer.count() > 0)
+                    ? cacheMissTimer
+                    : requestTimer;
+
+            if (latencyTimer != null && latencyTimer.count() > 0) {
+                endpointMetrics.put("meanMs", latencyTimer.mean(TimeUnit.MILLISECONDS));
+                endpointMetrics.put("maxMs", latencyTimer.max(TimeUnit.MILLISECONDS));
+                endpointMetrics.put("p50Ms", latencyTimer.percentile(0.5, TimeUnit.MILLISECONDS));
+                endpointMetrics.put("p95Ms", latencyTimer.percentile(0.95, TimeUnit.MILLISECONDS));
+                endpointMetrics.put("p99Ms", latencyTimer.percentile(0.99, TimeUnit.MILLISECONDS));
             }
 
             result.put(springUri, endpointMetrics);
