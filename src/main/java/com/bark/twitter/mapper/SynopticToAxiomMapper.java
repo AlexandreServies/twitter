@@ -122,47 +122,47 @@ public class SynopticToAxiomMapper {
     }
 
     /**
-     * Maps the userInfo from a Synoptic tweet.
+     * Maps the userInfo from a Synoptic tweet's user_profile field.
      */
     private AxionUserInfoDto mapUserInfo(JsonNode synopticTweet) {
-        String screenName = getText(synopticTweet, "screen_name");
-        String description = getText(synopticTweet, "bio");
-
-        // Extract user_extended_info fields
-        JsonNode extendedInfo = synopticTweet.get("user_extended_info");
-        String location = "";
-        String coverImage = "";
-        String createdAt = "";
-        if (extendedInfo != null && !extendedInfo.isNull()) {
-            location = getText(extendedInfo, "location");
-            coverImage = getText(extendedInfo, "profile_banner_url");
-            createdAt = getText(extendedInfo, "created_at"); // Keep Twitter format for tweet's userInfo
-        }
-
-        // Extract following_count and affiliate_badge from user_profile
-        int following = 0;
-        AxionBadgeInfoDto badgeInfo = null;
         JsonNode userProfile = synopticTweet.get("user_profile");
-        if (userProfile != null && !userProfile.isNull()) {
-            following = getInt(userProfile, "following_count");
-            badgeInfo = mapBadgeInfo(userProfile.get("affiliate_badge"));
+        if (userProfile == null || userProfile.isNull()) {
+            // Fallback to top-level fields if user_profile is missing
+            return AxionUserInfoDto.builder()
+                    .userName(getText(synopticTweet, "screen_name"))
+                    .name(getText(synopticTweet, "name"))
+                    .isBlueVerified(getBool(synopticTweet, "is_blue_verified"))
+                    .verifiedType(getTextOrNull(synopticTweet, "verified_type"))
+                    .profilePicture(getText(synopticTweet, "logo"))
+                    .coverImage("")
+                    .description(getText(synopticTweet, "bio"))
+                    .location("")
+                    .followers(getInt(synopticTweet, "followers_count"))
+                    .following(0)
+                    .createdAt("")
+                    .isAutomated(false)
+                    .bioDescription(getText(synopticTweet, "bio"))
+                    .badgeInfo(null)
+                    .build();
         }
+
+        String description = getText(userProfile, "description");
 
         return AxionUserInfoDto.builder()
-                .userName(screenName)
-                .name(getText(synopticTweet, "name"))
-                .isBlueVerified(getBool(synopticTweet, "is_blue_verified"))
-                .verifiedType(getTextOrNull(synopticTweet, "verified_type"))
-                .profilePicture(getText(synopticTweet, "logo"))
-                .coverImage(coverImage)
+                .userName(getText(userProfile, "screen_name"))
+                .name(getText(userProfile, "name"))
+                .isBlueVerified(getBool(userProfile, "is_blue_verified"))
+                .verifiedType(getTextOrNull(userProfile, "verified_type"))
+                .profilePicture(getText(userProfile, "profile_image_url"))
+                .coverImage(getText(userProfile, "profile_banner_url"))
                 .description(description)
-                .location(location)
-                .followers(getInt(synopticTweet, "followers_count"))
-                .following(following)
-                .createdAt(createdAt)
+                .location(getText(userProfile, "location"))
+                .followers(getInt(userProfile, "followers_count"))
+                .following(getInt(userProfile, "following_count"))
+                .createdAt(getText(userProfile, "created_at"))
                 .isAutomated(false) // Not available in Synoptic
                 .bioDescription(description)
-                .badgeInfo(badgeInfo)
+                .badgeInfo(mapBadgeInfo(userProfile.get("affiliate_badge")))
                 .build();
     }
 
