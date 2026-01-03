@@ -71,6 +71,7 @@ aws:
   region: us-east-1
   dynamodb:
     usage-table: twitter-relay-usage
+    credits-table: twitter-relay-credits
 
 pushover:
   api-key: akaoadkd8wgfewoaada6fg27oocxw2

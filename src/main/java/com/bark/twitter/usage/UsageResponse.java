@@ -8,6 +8,7 @@ import java.util.Map;
  */
 public record UsageResponse(
         long total,
+        long creditsRemaining,
         Map<String, EndpointUsage> endpoints
 ) {
 

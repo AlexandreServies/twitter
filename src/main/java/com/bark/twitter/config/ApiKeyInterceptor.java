@@ -1,6 +1,8 @@
 package com.bark.twitter.config;
 
+import com.bark.twitter.credits.CreditService;
 import com.bark.twitter.exception.ForbiddenException;
+import com.bark.twitter.exception.NoCreditsException;
 import com.bark.twitter.exception.UnauthorizedException;
 import com.bark.twitter.usage.UsageTrackingService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,10 +18,12 @@ public class ApiKeyInterceptor implements HandlerInterceptor {
 
     private final SecurityConfig securityConfig;
     private final UsageTrackingService usageTrackingService;
+    private final CreditService creditService;
 
-    public ApiKeyInterceptor(SecurityConfig securityConfig, UsageTrackingService usageTrackingService) {
+    public ApiKeyInterceptor(SecurityConfig securityConfig, UsageTrackingService usageTrackingService, CreditService creditService) {
         this.securityConfig = securityConfig;
         this.usageTrackingService = usageTrackingService;
+        this.creditService = creditService;
     }
 
     @Override
@@ -56,6 +60,11 @@ public class ApiKeyInterceptor implements HandlerInterceptor {
         // Track usage asynchronously - zero latency impact (only known endpoints)
         String endpoint = normalizeEndpoint(path);
         if (endpoint != null) {
+            // Check and decrement credits
+            if (!creditService.decrementCredit(apiKey)) {
+                throw new NoCreditsException("No credits remaining");
+            }
+
             usageTrackingService.recordCall(apiKey, endpoint);
         }
 

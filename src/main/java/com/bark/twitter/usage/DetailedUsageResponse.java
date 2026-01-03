@@ -13,6 +13,7 @@ public record DetailedUsageResponse(
         double income,
         double cost,
         double profit,
+        long creditsRemaining,
         Map<String, EndpointUsage> endpoints
 ) {
 

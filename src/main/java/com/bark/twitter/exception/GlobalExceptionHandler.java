@@ -33,6 +33,12 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse(ex.getMessage()));
     }
 
+    @ExceptionHandler(NoCreditsException.class)
+    public ResponseEntity<ErrorResponse> handleNoCredits(NoCreditsException ex) {
+        return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
+                .body(new ErrorResponse(ex.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
         System.out.println("[" + System.currentTimeMillis() + "][ERROR] Unexpected error: " + ex.getMessage());

@@ -1,6 +1,7 @@
 package com.bark.twitter.usage;
 
 import com.bark.twitter.config.ApiKeyInterceptor;
+import com.bark.twitter.credits.CreditService;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -30,9 +31,11 @@ import java.util.concurrent.ExecutionException;
 public class UsageController {
 
     private final UsageRepository usageRepository;
+    private final CreditService creditService;
 
-    public UsageController(UsageRepository usageRepository) {
+    public UsageController(UsageRepository usageRepository, CreditService creditService) {
         this.usageRepository = usageRepository;
+        this.creditService = creditService;
     }
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -56,8 +59,9 @@ public class UsageController {
         String endStr = endDate.format(DATE_FORMAT);
 
         List<UsageRecord> records = usageRepository.queryUsage(apiKey, startStr, endStr).get();
+        long creditsRemaining = creditService.getCredits(apiKey);
 
-        return aggregateUsage(records);
+        return aggregateUsage(records, creditsRemaining);
     }
 
     @Hidden
@@ -71,14 +75,15 @@ public class UsageController {
 
         List<UsageRecord> usageRecords = usageFuture.get();
         List<DetailedUsageRecord> detailedRecords = detailedFuture.get();
+        long creditsRemaining = creditService.getCredits(apiKey);
 
-        return aggregateDetailedUsage(usageRecords, detailedRecords);
+        return aggregateDetailedUsage(usageRecords, detailedRecords, creditsRemaining);
     }
 
     /**
      * Aggregates minute-level records into endpoint -> day -> hour breakdown.
      */
-    private UsageResponse aggregateUsage(List<UsageRecord> records) {
+    private UsageResponse aggregateUsage(List<UsageRecord> records, long creditsRemaining) {
         // Structure: endpoint -> day -> hour -> count
         Map<String, Map<String, Map<String, Long>>> aggregated = new HashMap<>();
         long total = 0;
@@ -123,7 +128,7 @@ public class UsageController {
             endpoints.put(endpoint, new UsageResponse.EndpointUsage(endpointTotal, days));
         }
 
-        return new UsageResponse(total, endpoints);
+        return new UsageResponse(total, creditsRemaining, endpoints);
     }
 
     private static final double INCOME_PER_CALL = 0.00025;
@@ -134,7 +139,7 @@ public class UsageController {
     /**
      * Aggregates usage and detailed records into endpoint -> day breakdown with miss/hit counts.
      */
-    private DetailedUsageResponse aggregateDetailedUsage(List<UsageRecord> usageRecords, List<DetailedUsageRecord> detailedRecords) {
+    private DetailedUsageResponse aggregateDetailedUsage(List<UsageRecord> usageRecords, List<DetailedUsageRecord> detailedRecords, long creditsRemaining) {
         // Structure: endpoint -> day -> {total, miss, hit}
         Map<String, Map<String, long[]>> aggregated = new HashMap<>();
 
@@ -224,6 +229,6 @@ public class UsageController {
 
         double grandProfit = grandIncome - grandCost;
         return new DetailedUsageResponse(grandTotal, grandMiss, grandHit,
-                grandIncome, grandCost, grandProfit, endpoints);
+                grandIncome, grandCost, grandProfit, creditsRemaining, endpoints);
     }
 }
