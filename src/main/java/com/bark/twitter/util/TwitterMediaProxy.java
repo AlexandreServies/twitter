@@ -12,11 +12,9 @@ public class TwitterMediaProxy {
 
     private static final String PROXY_BASE_URL = "https://twproxy.twproxy.workers.dev/";
 
-    private static final String VIDEO_HOST = "video.twimg.com";
-
     /**
      * Wraps a Twitter video URL with the proxy if needed.
-     * Only proxies video.twimg.com URLs; other URLs are returned unchanged.
+     * Proxies video.twimg.com and video-s.twimg.com URLs; other URLs are returned unchanged.
      *
      * @param url The original URL
      * @return The proxied URL if applicable, otherwise the original URL
@@ -26,10 +24,14 @@ public class TwitterMediaProxy {
             return url;
         }
 
-        if (!url.contains(VIDEO_HOST)) {
+        if (!needsProxy(url)) {
             return url;
         }
 
         return PROXY_BASE_URL + "?url=" + URLEncoder.encode(url, StandardCharsets.UTF_8);
+    }
+
+    private static boolean needsProxy(String url) {
+        return url.contains("video.twimg.com") || url.contains("video-s.twimg.com");
     }
 }
