@@ -75,6 +75,7 @@ public class ApiKeyInterceptor implements HandlerInterceptor {
      * Normalizes endpoint path to group by base endpoint.
      * e.g., /tweet/123 -> /tweet, /user/456 -> /user
      * Only tracks known endpoints, returns null for unknown.
+     * Note: /follows handles its own credits/usage in the service layer.
      */
     private String normalizeEndpoint(String path) {
         // Normalize any double slashes
@@ -83,6 +84,7 @@ public class ApiKeyInterceptor implements HandlerInterceptor {
         if (path.startsWith("/tweet/")) return "/tweet";
         if (path.startsWith("/user/")) return "/user";
         if (path.startsWith("/community/")) return "/community";
+        // /follows is intentionally NOT tracked here - it handles batch credits/usage in TwitterService
 
         // Return null for unknown endpoints (won't be tracked)
         return null;

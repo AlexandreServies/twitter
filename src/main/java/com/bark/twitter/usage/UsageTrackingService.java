@@ -32,8 +32,18 @@ public class UsageTrackingService {
      * - LongAdder.increment() is highly concurrent and non-blocking
      */
     public void recordCall(String apiKeyHash, String endpoint) {
+        recordCalls(apiKeyHash, endpoint, 1);
+    }
+
+    /**
+     * Records multiple API calls at once. Used for batch operations.
+     */
+    public void recordCalls(String apiKeyHash, String endpoint, long count) {
+        if (count <= 0) {
+            return;
+        }
         UsageKey key = UsageKey.of(apiKeyHash, endpoint);
-        accumulator.computeIfAbsent(key, k -> new LongAdder()).increment();
+        accumulator.computeIfAbsent(key, k -> new LongAdder()).add(count);
     }
 
     /**

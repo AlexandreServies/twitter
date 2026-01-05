@@ -66,12 +66,14 @@ twitter:
 security:
   api-keys:
     - 2e54206b02cb6ed997f42f5bb10d7d19ff59e80f19b334339d38d08a92fb1b71 # AXIOM
+    - 29af871dffea7204ec3042a83d53fa69b82f5f0108f2f919817a411c18150d42 # BARK MAIN
 
 aws:
   region: us-east-1
   dynamodb:
     usage-table: twitter-relay-usage
     credits-table: twitter-relay-credits
+    username-cache-table: twitter-username-cache
 
 pushover:
   api-key: akaoadkd8wgfewoaada6fg27oocxw2

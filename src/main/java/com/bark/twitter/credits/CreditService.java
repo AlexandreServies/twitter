@@ -40,9 +40,9 @@ public class CreditService {
             try {
                 long credits = creditRepository.getCredits(apiKey).join();
                 creditsCache.put(apiKey, new AtomicLong(credits));
-                System.out.println("[" + System.currentTimeMillis() + "][CREDITS] Loaded " + credits + " credits for API key");
+                System.out.println("[" + System.currentTimeMillis() + "][CREDITS] Loaded " + credits + " credits for API key " + apiKey);
             } catch (Exception e) {
-                System.err.println("[" + System.currentTimeMillis() + "][CREDITS] Failed to load credits for API key: " + e.getMessage());
+                System.err.println("[" + System.currentTimeMillis() + "][CREDITS] Failed to load credits for API key " + apiKey + ": " + e.getMessage());
                 creditsCache.put(apiKey, new AtomicLong(0));
             }
         }
@@ -70,22 +70,35 @@ public class CreditService {
      * Returns true if credit was successfully decremented, false if no credits available.
      */
     public boolean decrementCredit(String apiKey) {
+        return decrementCredits(apiKey, 1);
+    }
+
+    /**
+     * Decrements multiple credits from the API key.
+     * Used for batch operations where multiple credits need to be deducted.
+     * Returns true if credits were successfully decremented, false if insufficient credits.
+     */
+    public boolean decrementCredits(String apiKey, long amount) {
+        if (amount <= 0) {
+            return true;
+        }
+
         AtomicLong credits = creditsCache.get(apiKey);
         if (credits == null) {
             return false;
         }
 
-        // Atomically decrement if positive
+        // Atomically decrement if sufficient credits
         long current;
         do {
             current = credits.get();
-            if (current <= 0) {
+            if (current < amount) {
                 return false;
             }
-        } while (!credits.compareAndSet(current, current - 1));
+        } while (!credits.compareAndSet(current, current - amount));
 
         // Track pending decrement for flush
-        pendingDecrements.computeIfAbsent(apiKey, k -> new LongAdder()).increment();
+        pendingDecrements.computeIfAbsent(apiKey, k -> new LongAdder()).add(amount);
         return true;
     }
 

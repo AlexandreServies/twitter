@@ -1,8 +1,11 @@
 package com.bark.twitter.provider;
 
+import com.bark.twitter.dto.BatchUserResult;
 import com.bark.twitter.dto.axion.AxionCommunityDto;
 import com.bark.twitter.dto.axion.AxionTweetDto;
 import com.bark.twitter.dto.axion.AxionUserInfoDto;
+
+import java.util.List;
 
 /**
  * Interface for Twitter data providers.
@@ -50,4 +53,22 @@ public interface TwitterDataProvider {
      * Returns the name of this provider for logging purposes.
      */
     String getProviderName();
+
+    /**
+     * Batch fetches users by their numeric IDs.
+     * Returns found users, not-found IDs, and errored IDs separately.
+     *
+     * @param userIds list of user IDs to fetch
+     * @return batch result with found users (keyed by userId), not-found, and errors
+     */
+    BatchUserResult getUsersByIds(List<String> userIds);
+
+    /**
+     * Batch fetches users by their usernames (lowercase).
+     * Returns found users, not-found usernames, and errored usernames separately.
+     *
+     * @param usernames list of usernames to fetch (lowercase)
+     * @return batch result with found users (keyed by lowercase username), not-found, and errors
+     */
+    BatchUserResult getUsersByUsernames(List<String> usernames);
 }

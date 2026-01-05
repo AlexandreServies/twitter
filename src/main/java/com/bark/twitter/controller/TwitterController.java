@@ -1,12 +1,15 @@
 package com.bark.twitter.controller;
 
+import com.bark.twitter.config.ApiKeyInterceptor;
 import com.bark.twitter.dto.ErrorResponse;
+import com.bark.twitter.dto.FollowsResponseDto;
 import com.bark.twitter.dto.axion.AxionCommunityDto;
 import com.bark.twitter.dto.axion.AxionTweetDto;
 import com.bark.twitter.dto.axion.AxionUserInfoDto;
 import com.bark.twitter.exception.BadRequestException;
 import com.bark.twitter.infra.PushoverClient;
 import com.bark.twitter.service.TwitterService;
+import jakarta.servlet.http.HttpServletRequest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -22,8 +25,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -144,6 +150,46 @@ public class TwitterController {
         AxionCommunityDto response = twitterService.getCommunity(id);
         long duration = System.currentTimeMillis() - start;
         System.out.println("[" + System.currentTimeMillis() + "][" + id + "][RESPONSE][COMMUNITY][" + duration + "ms] " + toJson(response));
+        return response;
+    }
+
+    @GetMapping("/follows")
+    @Operation(summary = "Get followers/following counts for multiple users",
+            description = "Fetches follower and following counts for a batch of Twitter users by their handles. " +
+                    "Charges 1 credit per handle regardless of whether found or cached.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Followers data returned",
+                    content = @Content(schema = @Schema(implementation = FollowsResponseDto.class))),
+            @ApiResponse(responseCode = "400", description = "No usernames provided",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"error\": \"No usernames provided\"}"))),
+            @ApiResponse(responseCode = "401", description = "Missing API key",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"error\": \"Missing x-api-key header\"}"))),
+            @ApiResponse(responseCode = "403", description = "Invalid API key or insufficient credits",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"error\": \"Insufficient credits for 100 handles\"}")))
+    })
+    public FollowsResponseDto getFollows(
+            @Parameter(description = "Comma-separated list of Twitter handles (without @)")
+            @RequestParam("user_handles") String userHandles,
+            HttpServletRequest request) {
+        long start = System.currentTimeMillis();
+        String apiKey = (String) request.getAttribute(ApiKeyInterceptor.API_KEY_ATTRIBUTE);
+
+        List<String> usernames = Arrays.stream(userHandles.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+
+        if (usernames.isEmpty()) {
+            throw new BadRequestException("No usernames provided");
+        }
+
+        System.out.println("[" + start + "][" + apiKey.substring(0, 8) + "][REQUEST][FOLLOWS] GET /follows?user_handles=" + userHandles);
+        FollowsResponseDto response = twitterService.getFollowsByUsernames(usernames, apiKey);
+        long duration = System.currentTimeMillis() - start;
+        System.out.println("[" + System.currentTimeMillis() + "][" + apiKey.substring(0, 8) + "][RESPONSE][FOLLOWS][" + duration + "ms] " + toJson(response));
         return response;
     }
 

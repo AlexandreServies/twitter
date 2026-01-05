@@ -18,7 +18,8 @@ public class MetricsController {
     private static final Map<String, String> ENDPOINT_MAPPING = Map.of(
             "/tweet", "/tweet/{id}",
             "/user", "/user/{idOrHandle}",
-            "/community", "/community/{id}"
+            "/community", "/community/{id}",
+            "/follows", "/follows"
     );
 
     private final MeterRegistry meterRegistry;

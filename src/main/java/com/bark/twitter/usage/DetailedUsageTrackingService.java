@@ -27,16 +27,32 @@ public class DetailedUsageTrackingService {
      * Records an API call (cache miss, fetched from upstream provider). Zero-latency impact.
      */
     public void recordApiCall(String apiKeyHash, String endpoint) {
+        recordApiCalls(apiKeyHash, endpoint, 1);
+    }
+
+    /**
+     * Records multiple API calls. Used for batch operations.
+     */
+    public void recordApiCalls(String apiKeyHash, String endpoint, long count) {
+        if (count <= 0) return;
         DetailedUsageKey key = DetailedUsageKey.synoptic(apiKeyHash, endpoint);
-        accumulator.computeIfAbsent(key, k -> new LongAdder()).increment();
+        accumulator.computeIfAbsent(key, k -> new LongAdder()).add(count);
     }
 
     /**
      * Records a cache hit. Zero-latency impact.
      */
     public void recordCacheHit(String apiKeyHash, String endpoint) {
+        recordCacheHits(apiKeyHash, endpoint, 1);
+    }
+
+    /**
+     * Records multiple cache hits. Used for batch operations.
+     */
+    public void recordCacheHits(String apiKeyHash, String endpoint, long count) {
+        if (count <= 0) return;
         DetailedUsageKey key = DetailedUsageKey.cache(apiKeyHash, endpoint);
-        accumulator.computeIfAbsent(key, k -> new LongAdder()).increment();
+        accumulator.computeIfAbsent(key, k -> new LongAdder()).add(count);
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.bark.twitter.provider;
 
 import com.bark.twitter.client.TwitterApiClient;
+import com.bark.twitter.dto.BatchUserResult;
 import com.bark.twitter.dto.axion.AxionCommunityDto;
 import com.bark.twitter.dto.axion.AxionTweetDto;
 import com.bark.twitter.dto.axion.AxionUserInfoDto;
@@ -8,6 +9,8 @@ import com.bark.twitter.exception.NotFoundException;
 import com.bark.twitter.mapper.TwitterApiToAxionMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 /**
  * Twitter data provider that uses TwitterAPI.io as the data source.
@@ -58,6 +61,16 @@ public class TwitterApiDataProvider implements TwitterDataProvider {
     @Override
     public String getProviderName() {
         return "TWITTERAPI";
+    }
+
+    @Override
+    public BatchUserResult getUsersByIds(List<String> userIds) {
+        throw new UnsupportedOperationException("Batch user fetch by IDs not supported by TwitterAPI.io");
+    }
+
+    @Override
+    public BatchUserResult getUsersByUsernames(List<String> usernames) {
+        throw new UnsupportedOperationException("Batch user fetch by usernames not supported by TwitterAPI.io");
     }
 
     /**
