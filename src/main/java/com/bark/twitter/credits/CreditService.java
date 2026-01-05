@@ -116,6 +116,16 @@ public class CreditService {
         System.out.println("[" + System.currentTimeMillis() + "][CREDITS] Added " + amount + " credits to API key");
     }
 
+    public void removeCredits(String apiKey, long amount) {
+        // Update in-memory cache
+        creditsCache.computeIfAbsent(apiKey, k -> new AtomicLong(0)).addAndGet(-amount);
+
+        // Update DynamoDB immediately
+        creditRepository.decrementCredits(apiKey, amount);
+
+        System.out.println("[" + System.currentTimeMillis() + "][CREDITS] Removed " + amount + " credits from API key");
+    }
+
     /**
      * Flushes pending decrements to DynamoDB.
      * Called by UsageTrackingService during its periodic flush.
