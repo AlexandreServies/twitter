@@ -1,8 +1,7 @@
 package com.bark.twitter.credits;
 
 import com.bark.twitter.config.ApiKeyInterceptor;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -14,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/credits")
-@Tag(name = "Credits", description = "API credit management")
+@Hidden
 public class CreditController {
 
     private final CreditService creditService;
@@ -24,7 +23,6 @@ public class CreditController {
     }
 
     @PostMapping
-    @Operation(summary = "Add credits", description = "Adds credits to the authenticated API key")
     public AddCreditsResponse addCredits(HttpServletRequest request, @RequestBody AddCreditsRequest body) {
         String apiKey = (String) request.getAttribute(ApiKeyInterceptor.API_KEY_ATTRIBUTE);
         creditService.addCredits(apiKey, body.amount());
