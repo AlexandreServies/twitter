@@ -31,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 @RestController
 @Tag(name = "Twitter API", description = "Twitter data relay service")
@@ -55,6 +56,17 @@ public class TwitterController {
         }
     }
 
+    private void delayCacheHit(long start) {
+        long elapsed = System.currentTimeMillis() - start;
+        if (elapsed < 10) {
+            try {
+                Thread.sleep(ThreadLocalRandom.current().nextInt(50, 101));
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
     @GetMapping("/tweet/{id}")
     @Operation(summary = "Get tweet by ID", description = "Fetches a tweet by its ID.")
     @ApiResponses(value = {
@@ -74,6 +86,7 @@ public class TwitterController {
         long start = System.currentTimeMillis();
         System.out.println("[" + start + "][" + id + "][REQUEST][TWEET] GET /tweet/" + id);
         AxionTweetDto response = twitterService.getTweet(id);
+        delayCacheHit(start);
         long duration = System.currentTimeMillis() - start;
         System.out.println("[" + System.currentTimeMillis() + "][" + id + "][RESPONSE][TWEET][" + duration + "ms] " + toJson(response));
         return response;
@@ -112,6 +125,7 @@ public class TwitterController {
             response = twitterService.getUser(idOrHandle);
         }
 
+        delayCacheHit(start);
         long duration = System.currentTimeMillis() - start;
         System.out.println("[" + System.currentTimeMillis() + "][" + idOrHandle + "][RESPONSE][USER][" + duration + "ms] " + toJson(response));
         return response;
@@ -148,6 +162,7 @@ public class TwitterController {
         long start = System.currentTimeMillis();
         System.out.println("[" + start + "][" + id + "][REQUEST][COMMUNITY] GET /community/" + id);
         AxionCommunityDto response = twitterService.getCommunity(id);
+        delayCacheHit(start);
         long duration = System.currentTimeMillis() - start;
         System.out.println("[" + System.currentTimeMillis() + "][" + id + "][RESPONSE][COMMUNITY][" + duration + "ms] " + toJson(response));
         return response;
