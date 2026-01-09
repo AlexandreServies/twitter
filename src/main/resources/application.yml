@@ -62,6 +62,19 @@ twitter:
     tweet: SYNOPTIC
     user: SYNOPTIC
     community: SYNOPTIC
+  cache:
+    tweets:
+      ttl-minutes: 15
+      billing-period-minutes: 0  # 0 = bill every request
+    users:
+      ttl-minutes: 15
+      billing-period-minutes: 0
+    communities:
+      ttl-minutes: 15
+      billing-period-minutes: 0
+    follows:
+      ttl-minutes: 60
+      billing-period-minutes: 30
 
 security:
   api-keys:

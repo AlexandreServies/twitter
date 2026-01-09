@@ -1,15 +1,16 @@
 package com.bark.twitter.config;
 
-import com.bark.twitter.credits.CreditService;
 import com.bark.twitter.exception.ForbiddenException;
-import com.bark.twitter.exception.NoCreditsException;
 import com.bark.twitter.exception.UnauthorizedException;
-import com.bark.twitter.usage.UsageTrackingService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+/**
+ * Interceptor that validates API keys for all protected endpoints.
+ * Credit deduction and usage tracking are handled in the service layer.
+ */
 @Component
 public class ApiKeyInterceptor implements HandlerInterceptor {
 
@@ -17,13 +18,9 @@ public class ApiKeyInterceptor implements HandlerInterceptor {
     public static final String API_KEY_ATTRIBUTE = "apiKey";
 
     private final SecurityConfig securityConfig;
-    private final UsageTrackingService usageTrackingService;
-    private final CreditService creditService;
 
-    public ApiKeyInterceptor(SecurityConfig securityConfig, UsageTrackingService usageTrackingService, CreditService creditService) {
+    public ApiKeyInterceptor(SecurityConfig securityConfig) {
         this.securityConfig = securityConfig;
-        this.usageTrackingService = usageTrackingService;
-        this.creditService = creditService;
     }
 
     @Override
@@ -54,39 +51,9 @@ public class ApiKeyInterceptor implements HandlerInterceptor {
             throw new ForbiddenException("Invalid API key");
         }
 
-        // Store API key in request for /usage endpoint access
+        // Store API key in request for service layer access
         request.setAttribute(API_KEY_ATTRIBUTE, apiKey);
 
-        // Track usage asynchronously - zero latency impact (only known endpoints)
-        String endpoint = normalizeEndpoint(path);
-        if (endpoint != null) {
-            // Check and decrement credits
-            if (!creditService.decrementCredit(apiKey)) {
-                throw new NoCreditsException("No credits remaining");
-            }
-
-            usageTrackingService.recordCall(apiKey, endpoint);
-        }
-
         return true;
-    }
-
-    /**
-     * Normalizes endpoint path to group by base endpoint.
-     * e.g., /tweet/123 -> /tweet, /user/456 -> /user
-     * Only tracks known endpoints, returns null for unknown.
-     * Note: /follows handles its own credits/usage in the service layer.
-     */
-    private String normalizeEndpoint(String path) {
-        // Normalize any double slashes
-        path = path.replaceAll("//+", "/");
-
-        if (path.startsWith("/tweet/")) return "/tweet";
-        if (path.startsWith("/user/")) return "/user";
-        if (path.startsWith("/community/")) return "/community";
-        // /follows is intentionally NOT tracked here - it handles batch credits/usage in TwitterService
-
-        // Return null for unknown endpoints (won't be tracked)
-        return null;
     }
 }

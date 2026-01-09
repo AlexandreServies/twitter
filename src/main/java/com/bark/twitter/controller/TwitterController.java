@@ -203,10 +203,10 @@ public class TwitterController {
 
         System.out.println("[" + start + "][" + apiKey.substring(0, 8) + "][REQUEST][FOLLOWS] GET /follows?user_handles=" + userHandles);
         var result = twitterService.getFollowsByUsernames(usernames, apiKey);
-        if (result.hadCacheMisses()) {
-            long duration = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][" + apiKey.substring(0, 8) + "][RESPONSE][FOLLOWS][" + duration + "ms] " + toJson(result.response()));
-        }
+//        if (result.hadCacheMisses()) {
+//            long duration = System.currentTimeMillis() - start;
+//            System.out.println("[" + System.currentTimeMillis() + "][" + apiKey.substring(0, 8) + "][RESPONSE][FOLLOWS][" + duration + "ms] " + toJson(result.response()));
+//        }
         return result.response();
     }
 
