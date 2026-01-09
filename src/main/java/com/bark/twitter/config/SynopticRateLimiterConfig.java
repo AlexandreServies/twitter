@@ -19,6 +19,19 @@ public class SynopticRateLimiterConfig {
     private static final int CALLS_PER_SECOND = 40;
 
     /**
+     * Rate limiter for tweet endpoint.
+     */
+    @Bean
+    public RateLimiter synopticTweetRateLimiter() {
+        RateLimiterConfig config = RateLimiterConfig.custom()
+                .limitForPeriod(CALLS_PER_SECOND)
+                .limitRefreshPeriod(Duration.ofSeconds(1))
+                .timeoutDuration(Duration.ofMinutes(2)) // Wait up to 2 min for permit
+                .build();
+        return RateLimiter.of("synoptic-tweet", config);
+    }
+
+    /**
      * Rate limiter for users-by-id batch endpoint.
      */
     @Bean
@@ -42,6 +55,19 @@ public class SynopticRateLimiterConfig {
                 .timeoutDuration(Duration.ofMinutes(2)) // Wait up to 2 min for permit
                 .build();
         return RateLimiter.of("synoptic-user-by-username", config);
+    }
+
+    /**
+     * Rate limiter for community endpoint.
+     */
+    @Bean
+    public RateLimiter synopticCommunityRateLimiter() {
+        RateLimiterConfig config = RateLimiterConfig.custom()
+                .limitForPeriod(CALLS_PER_SECOND)
+                .limitRefreshPeriod(Duration.ofSeconds(1))
+                .timeoutDuration(Duration.ofMinutes(2)) // Wait up to 2 min for permit
+                .build();
+        return RateLimiter.of("synoptic-community", config);
     }
 
     /**

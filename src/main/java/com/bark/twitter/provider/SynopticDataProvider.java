@@ -3,6 +3,7 @@ package com.bark.twitter.provider;
 import com.bark.twitter.cache.UsernameCacheService;
 import com.bark.twitter.client.JsonLookupResult;
 import com.bark.twitter.client.SynopticClient;
+import com.bark.twitter.dto.BatchCommunityMemberCountResult;
 import com.bark.twitter.dto.BatchUserResult;
 import com.bark.twitter.dto.axion.AxionCommunityDto;
 import com.bark.twitter.dto.axion.AxionTweetDto;
@@ -11,14 +12,12 @@ import com.bark.twitter.exception.NotFoundException;
 import com.bark.twitter.mapper.SynopticToAxiomMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.github.resilience4j.ratelimiter.RateLimiter;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -33,21 +32,15 @@ public class SynopticDataProvider implements TwitterDataProvider {
     private final SynopticClient synopticClient;
     private final SynopticToAxiomMapper axiomMapper;
     private final UsernameCacheService usernameCacheService;
-    private final RateLimiter usersByIdRateLimiter;
-    private final RateLimiter userByUsernameRateLimiter;
     private final ExecutorService batchExecutor;
 
     public SynopticDataProvider(SynopticClient synopticClient,
                                 SynopticToAxiomMapper axiomMapper,
                                 UsernameCacheService usernameCacheService,
-                                @Qualifier("synopticUsersByIdRateLimiter") RateLimiter usersByIdRateLimiter,
-                                @Qualifier("synopticUserByUsernameRateLimiter") RateLimiter userByUsernameRateLimiter,
                                 @Qualifier("synopticBatchExecutor") ExecutorService batchExecutor) {
         this.synopticClient = synopticClient;
         this.axiomMapper = axiomMapper;
         this.usernameCacheService = usernameCacheService;
-        this.usersByIdRateLimiter = usersByIdRateLimiter;
-        this.userByUsernameRateLimiter = userByUsernameRateLimiter;
         this.batchExecutor = batchExecutor;
     }
 
@@ -139,14 +132,10 @@ public class SynopticDataProvider implements TwitterDataProvider {
         // Split into balanced chunks (max 100 per call)
         List<List<String>> chunks = partitionBalanced(userIds, 100);
 
-        // Execute all chunks in parallel with rate limiting
+        // Execute all chunks in parallel (rate limiting handled by SynopticClient)
         List<CompletableFuture<BatchUserResult>> futures = new ArrayList<>();
         for (List<String> chunk : chunks) {
-            futures.add(CompletableFuture.supplyAsync(() -> {
-                // Acquire rate limit permit (blocks until available)
-                RateLimiter.waitForPermission(usersByIdRateLimiter);
-                return fetchUsersByIdChunk(chunk);
-            }, batchExecutor));
+            futures.add(CompletableFuture.supplyAsync(() -> fetchUsersByIdChunk(chunk), batchExecutor));
         }
 
         // Wait for all and merge results
@@ -167,14 +156,11 @@ public class SynopticDataProvider implements TwitterDataProvider {
             return result;
         }
 
-        // Execute all username lookups in parallel with rate limiting
+        // Execute all username lookups in parallel (rate limiting handled by SynopticClient)
         List<CompletableFuture<Void>> futures = new ArrayList<>();
         for (String username : usernames) {
             futures.add(CompletableFuture.runAsync(() -> {
-                // Acquire rate limit permit (blocks until available)
-                RateLimiter.waitForPermission(userByUsernameRateLimiter);
-
-                JsonLookupResult lookupResult = synopticClient.fetchUserByUsername(username);
+                JsonLookupResult lookupResult = synopticClient.getUserByUsername(username, true);
 
                 synchronized (result) {
                     if (lookupResult.isFound()) {
@@ -202,6 +188,44 @@ public class SynopticDataProvider implements TwitterDataProvider {
         return result;
     }
 
+    @Override
+    public BatchCommunityMemberCountResult getCommunityMemberCounts(List<String> communityIds) {
+        BatchCommunityMemberCountResult result = new BatchCommunityMemberCountResult();
+        if (communityIds == null || communityIds.isEmpty()) {
+            return result;
+        }
+
+        // Execute all community lookups in parallel (rate limiting handled by SynopticClient)
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+        for (String communityId : communityIds) {
+            futures.add(CompletableFuture.runAsync(() -> {
+                JsonLookupResult lookupResult = synopticClient.getCommunity(communityId, true);
+
+                synchronized (result) {
+                    if (lookupResult.isFound()) {
+                        // Extract member_count from community data
+                        long memberCount = lookupResult.data().path("member_count").asLong(0);
+                        result.addFound(communityId, memberCount);
+                    } else if (lookupResult.isNotFound()) {
+                        result.addNotFound(communityId);
+                    } else {
+                        result.addError(communityId);
+                    }
+                }
+            }, batchExecutor));
+        }
+
+        // Wait for all to complete
+        for (CompletableFuture<Void> future : futures) {
+            try {
+                future.join();
+            } catch (Exception e) {
+                // Individual failures already tracked in the async block
+            }
+        }
+        return result;
+    }
+
     /**
      * Fetches a chunk of users by ID (max 100).
      * Tracks which IDs were found vs not found.
@@ -211,7 +235,7 @@ public class SynopticDataProvider implements TwitterDataProvider {
         Set<String> foundIds = new HashSet<>();
 
         try {
-            Optional<JsonNode> usersOpt = synopticClient.getUsersByIdSilent(userIds);
+            Optional<JsonNode> usersOpt = synopticClient.getUsersById(userIds, true).toOptional();
             if (usersOpt.isPresent()) {
                 JsonNode usersArray = usersOpt.get();
                 if (usersArray.isArray()) {

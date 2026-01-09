@@ -65,16 +65,19 @@ twitter:
   cache:
     tweets:
       ttl-minutes: 15
-      billing-period-minutes: 0  # 0 = bill every request
+      billing-period-minutes: 4
     users:
       ttl-minutes: 15
-      billing-period-minutes: 0
+      billing-period-minutes: 4
     communities:
       ttl-minutes: 15
-      billing-period-minutes: 0
+      billing-period-minutes: 4
     follows:
       ttl-minutes: 60
       billing-period-minutes: 30
+    community-member-counts:
+      ttl-minutes: 2
+      billing-period-minutes: 1
 
 security:
   api-keys:

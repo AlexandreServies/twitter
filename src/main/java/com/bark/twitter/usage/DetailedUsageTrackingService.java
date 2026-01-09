@@ -10,8 +10,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.LongAdder;
 
 /**
- * Service for tracking detailed API usage (synoptic vs cache) with minimal performance impact.
+ * Service for tracking detailed API usage with minimal performance impact.
  * Uses in-memory accumulation with periodic async flush to DynamoDB.
+ *
+ * Tracks three types:
+ * - hit: Cache hits (served from local cache)
+ * - miss: Cache misses (had to call Synoptic)
+ * - found: Items Synoptic actually found and charged for (subset of miss, used for cost calculation)
  */
 @Service
 public class DetailedUsageTrackingService {
@@ -21,22 +26,6 @@ public class DetailedUsageTrackingService {
 
     public DetailedUsageTrackingService(UsageRepository repository) {
         this.repository = repository;
-    }
-
-    /**
-     * Records an API call (cache miss, fetched from upstream provider). Zero-latency impact.
-     */
-    public void recordApiCall(String apiKeyHash, String endpoint) {
-        recordApiCalls(apiKeyHash, endpoint, 1);
-    }
-
-    /**
-     * Records multiple API calls. Used for batch operations.
-     */
-    public void recordApiCalls(String apiKeyHash, String endpoint, long count) {
-        if (count <= 0) return;
-        DetailedUsageKey key = DetailedUsageKey.synoptic(apiKeyHash, endpoint);
-        accumulator.computeIfAbsent(key, k -> new LongAdder()).add(count);
     }
 
     /**
@@ -51,7 +40,39 @@ public class DetailedUsageTrackingService {
      */
     public void recordCacheHits(String apiKeyHash, String endpoint, long count) {
         if (count <= 0) return;
-        DetailedUsageKey key = DetailedUsageKey.cache(apiKeyHash, endpoint);
+        DetailedUsageKey key = DetailedUsageKey.hit(apiKeyHash, endpoint);
+        accumulator.computeIfAbsent(key, k -> new LongAdder()).add(count);
+    }
+
+    /**
+     * Records a cache miss (had to call Synoptic). Zero-latency impact.
+     */
+    public void recordCacheMiss(String apiKeyHash, String endpoint) {
+        recordCacheMisses(apiKeyHash, endpoint, 1);
+    }
+
+    /**
+     * Records multiple cache misses. Used for batch operations.
+     */
+    public void recordCacheMisses(String apiKeyHash, String endpoint, long count) {
+        if (count <= 0) return;
+        DetailedUsageKey key = DetailedUsageKey.miss(apiKeyHash, endpoint);
+        accumulator.computeIfAbsent(key, k -> new LongAdder()).add(count);
+    }
+
+    /**
+     * Records a found item (Synoptic returned data and charged for it). Zero-latency impact.
+     */
+    public void recordFound(String apiKeyHash, String endpoint) {
+        recordFoundItems(apiKeyHash, endpoint, 1);
+    }
+
+    /**
+     * Records multiple found items. Used for batch operations.
+     */
+    public void recordFoundItems(String apiKeyHash, String endpoint, long count) {
+        if (count <= 0) return;
+        DetailedUsageKey key = DetailedUsageKey.found(apiKeyHash, endpoint);
         accumulator.computeIfAbsent(key, k -> new LongAdder()).add(count);
     }
 

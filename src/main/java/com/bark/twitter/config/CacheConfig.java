@@ -43,6 +43,11 @@ public class CacheConfig {
                         .expireAfterWrite(cacheProperties.follows().ttlMinutes(), TimeUnit.MINUTES)
                         .build());
 
+        cacheManager.registerCustomCache("community-member-counts",
+                Caffeine.newBuilder()
+                        .expireAfterWrite(cacheProperties.communityMemberCounts().ttlMinutes(), TimeUnit.MINUTES)
+                        .build());
+
         return cacheManager;
     }
 }

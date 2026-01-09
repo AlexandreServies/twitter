@@ -1,5 +1,6 @@
 package com.bark.twitter.provider;
 
+import com.bark.twitter.dto.BatchCommunityMemberCountResult;
 import com.bark.twitter.dto.BatchUserResult;
 import com.bark.twitter.dto.axion.AxionCommunityDto;
 import com.bark.twitter.dto.axion.AxionTweetDto;
@@ -127,6 +128,13 @@ public class SmartTwitterDataProvider implements TwitterDataProvider {
         // For batch operations, we use Synoptic directly as TwitterAPI doesn't support batch
         // No fallback for batch operations since twitterApiProvider throws UnsupportedOperationException
         return synopticProvider.getUsersByUsernames(usernames);
+    }
+
+    @Override
+    public BatchCommunityMemberCountResult getCommunityMemberCounts(List<String> communityIds) {
+        // For batch operations, we use Synoptic directly as TwitterAPI doesn't support batch
+        // No fallback for batch operations since twitterApiProvider throws UnsupportedOperationException
+        return synopticProvider.getCommunityMemberCounts(communityIds);
     }
 
     /**

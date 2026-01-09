@@ -22,7 +22,8 @@ public class MetricsController {
             "/tweet", "/tweet/{id}",
             "/user", "/user/{idOrHandle}",
             "/community", "/community/{id}",
-            "/follows", "/follows"
+            "/follows", "/follows",
+            "/communities", "/communities"
     );
 
     private final MeterRegistry meterRegistry;

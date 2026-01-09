@@ -135,44 +135,65 @@ public class UsageController {
     private static final double COST_PER_TWEET_SYNOPTIC = 0.0001;
     private static final double COST_PER_USER_SYNOPTIC = 0.00012;
     private static final double COST_PER_COMMUNITY_SYNOPTIC = 0.00024;
+    private static final double COST_PER_COMMUNITY_MEMBER_COUNT_SYNOPTIC = 0.00012;
 
     /**
-     * Aggregates usage and detailed records into endpoint -> day breakdown with miss/hit counts.
+     * Aggregates usage and detailed records into endpoint -> day breakdown.
+     *
+     * Fields calculated:
+     * - total: All API requests (hit + miss)
+     * - hit: Cache hits (DetailedUsageRecord type="hit" or legacy "cache")
+     * - miss: Cache misses (DetailedUsageRecord type="miss")
+     * - found: Items Synoptic found and charged for (DetailedUsageRecord type="found" or legacy "synoptic")
+     * - billable: Billed requests (from UsageRecord)
+     * - income: billable × INCOME_PER_CALL
+     * - cost: found × costPerFound
+     * - profit: income - cost
+     *
+     * Note: Legacy data has "synoptic" (now "found") but no "miss" tracking.
+     * For legacy data, miss will be 0 and found represents what was tracked.
+     * Going forward, miss >= found (miss includes not-found items).
      */
     private DetailedUsageResponse aggregateDetailedUsage(List<UsageRecord> usageRecords, List<DetailedUsageRecord> detailedRecords, long creditsRemaining) {
-        // Structure: endpoint -> day -> {total, miss, hit}
+        // Structure: endpoint -> day -> {billable, hit, miss, found}
+        // [0] = billable (from UsageRecord), [1] = hit, [2] = miss, [3] = found
         Map<String, Map<String, long[]>> aggregated = new HashMap<>();
 
-        // Aggregate total counts from regular usage records
+        // Aggregate billable counts from regular usage records
         for (UsageRecord record : usageRecords) {
             String endpoint = record.endpoint();
             String day = record.minuteBucket().substring(0, 10);  // 2025-12-17
             long count = record.count();
 
             aggregated.computeIfAbsent(endpoint, k -> new TreeMap<>())
-                    .computeIfAbsent(day, k -> new long[3])[0] += count;  // [0] = total
+                    .computeIfAbsent(day, k -> new long[4])[0] += count;  // [0] = billable
         }
 
-        // Aggregate miss and hit counts from detailed records
+        // Aggregate hit, miss, and found counts from detailed records
         for (DetailedUsageRecord record : detailedRecords) {
             String endpoint = record.endpoint();
             String day = record.minuteBucket().substring(0, 10);
             long count = record.count();
 
-            long[] counts = aggregated.computeIfAbsent(endpoint, k -> new TreeMap<>())
-                    .computeIfAbsent(day, k -> new long[3]);
+            // Normalize legacy types: "cache" -> "hit", "synoptic" -> "found"
+            String type = DetailedUsageKey.normalizeType(record.type());
 
-            if ("synoptic".equals(record.type())) {
-                counts[1] += count;  // [1] = miss
-            } else if ("cache".equals(record.type())) {
-                counts[2] += count;  // [2] = hit
+            long[] counts = aggregated.computeIfAbsent(endpoint, k -> new TreeMap<>())
+                    .computeIfAbsent(day, k -> new long[4]);
+
+            switch (type) {
+                case "hit" -> counts[1] += count;    // [1] = hit
+                case "miss" -> counts[2] += count;   // [2] = miss
+                case "found" -> counts[3] += count;  // [3] = found
             }
         }
 
         // Build response
         long grandTotal = 0;
-        long grandMiss = 0;
         long grandHit = 0;
+        long grandMiss = 0;
+        long grandFound = 0;
+        long grandBillable = 0;
         double grandIncome = 0;
         double grandCost = 0;
         Map<String, DetailedUsageResponse.EndpointUsage> endpoints = new LinkedHashMap<>();
@@ -182,15 +203,18 @@ public class UsageController {
             Map<String, long[]> dayMap = endpointEntry.getValue();
 
             long endpointTotal = 0;
-            long endpointMiss = 0;
             long endpointHit = 0;
+            long endpointMiss = 0;
+            long endpointFound = 0;
+            long endpointBillable = 0;
             double endpointIncome = 0;
             double endpointCost = 0;
             Map<String, DetailedUsageResponse.DayUsage> days = new LinkedHashMap<>();
 
-            double costPerMiss = switch (endpoint) {
+            double costPerFound = switch (endpoint) {
                 case "/tweet" -> COST_PER_TWEET_SYNOPTIC;
                 case "/community" -> COST_PER_COMMUNITY_SYNOPTIC;
+                case "/communities" -> COST_PER_COMMUNITY_MEMBER_COUNT_SYNOPTIC;
                 default -> COST_PER_USER_SYNOPTIC;
             };
 
@@ -198,37 +222,47 @@ public class UsageController {
                 String day = dayEntry.getKey();
                 long[] counts = dayEntry.getValue();
 
-                long dayTotal = counts[0];
-                long dayMiss = counts[1];
-                long dayHit = counts[2];
-                double dayIncome = dayTotal * INCOME_PER_CALL;
-                double dayCost = dayMiss * costPerMiss;
+                long dayBillable = counts[0];
+                long dayHit = counts[1];
+                long dayMiss = counts[2];
+                long dayFound = counts[3];
+
+                // For legacy data without miss tracking, estimate total from hit + found
+                // For new data, total = hit + miss
+                long dayTotal = dayMiss > 0 ? (dayHit + dayMiss) : (dayHit + dayFound);
+
+                double dayIncome = dayBillable * INCOME_PER_CALL;  // income from billable requests
+                double dayCost = dayFound * costPerFound;  // cost from found items only
                 double dayProfit = dayIncome - dayCost;
 
                 endpointTotal += dayTotal;
-                endpointMiss += dayMiss;
                 endpointHit += dayHit;
+                endpointMiss += dayMiss;
+                endpointFound += dayFound;
+                endpointBillable += dayBillable;
                 endpointIncome += dayIncome;
                 endpointCost += dayCost;
 
                 days.put(day, new DetailedUsageResponse.DayUsage(
-                        dayTotal, dayMiss, dayHit, dayIncome, dayCost, dayProfit));
+                        dayTotal, dayHit, dayMiss, dayFound, dayBillable, dayIncome, dayCost, dayProfit));
             }
 
             grandTotal += endpointTotal;
-            grandMiss += endpointMiss;
             grandHit += endpointHit;
+            grandMiss += endpointMiss;
+            grandFound += endpointFound;
+            grandBillable += endpointBillable;
             grandIncome += endpointIncome;
             grandCost += endpointCost;
 
             double endpointProfit = endpointIncome - endpointCost;
             endpoints.put(endpoint, new DetailedUsageResponse.EndpointUsage(
-                    endpointTotal, endpointMiss, endpointHit,
+                    endpointTotal, endpointHit, endpointMiss, endpointFound, endpointBillable,
                     endpointIncome, endpointCost, endpointProfit, days));
         }
 
         double grandProfit = grandIncome - grandCost;
-        return new DetailedUsageResponse(grandTotal, grandMiss, grandHit,
+        return new DetailedUsageResponse(grandTotal, grandHit, grandMiss, grandFound, grandBillable,
                 grandIncome, grandCost, grandProfit, creditsRemaining, endpoints);
     }
 }

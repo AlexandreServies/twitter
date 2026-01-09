@@ -1,6 +1,8 @@
 package com.bark.twitter.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.github.resilience4j.ratelimiter.RateLimiter;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -12,12 +14,30 @@ import java.util.Optional;
 public class SynopticClient {
 
     private final WebClient webClient;
+    private final RateLimiter tweetRateLimiter;
+    private final RateLimiter usersByIdRateLimiter;
+    private final RateLimiter userByUsernameRateLimiter;
+    private final RateLimiter communityRateLimiter;
 
-    public SynopticClient(WebClient synopticWebClient) {
+    public SynopticClient(WebClient synopticWebClient,
+                          @Qualifier("synopticTweetRateLimiter") RateLimiter tweetRateLimiter,
+                          @Qualifier("synopticUsersByIdRateLimiter") RateLimiter usersByIdRateLimiter,
+                          @Qualifier("synopticUserByUsernameRateLimiter") RateLimiter userByUsernameRateLimiter,
+                          @Qualifier("synopticCommunityRateLimiter") RateLimiter communityRateLimiter) {
         this.webClient = synopticWebClient;
+        this.tweetRateLimiter = tweetRateLimiter;
+        this.usersByIdRateLimiter = usersByIdRateLimiter;
+        this.userByUsernameRateLimiter = userByUsernameRateLimiter;
+        this.communityRateLimiter = communityRateLimiter;
     }
 
-    public Optional<JsonNode> getTweet(String tweetId) {
+    /**
+     * Fetches a tweet by ID.
+     * @param tweetId the tweet ID
+     * @param silent if true, suppresses logging (for batch operations)
+     */
+    public JsonLookupResult getTweet(String tweetId, boolean silent) {
+        RateLimiter.waitForPermission(tweetRateLimiter);
         long start = System.currentTimeMillis();
         try {
             JsonNode response = webClient.get()
@@ -30,27 +50,46 @@ public class SynopticClient {
                     .block();
 
             Optional<JsonNode> result = extractFirstFromData(response);
-            long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][" + tweetId + "][SYNOPTIC][TWEET][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
-            return result;
+            if (!silent) {
+                long elapsed = System.currentTimeMillis() - start;
+                System.out.println("[" + System.currentTimeMillis() + "][" + tweetId + "][SYNOPTIC][TWEET][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
+            }
+            return result.map(JsonLookupResult::found).orElse(JsonLookupResult.notFound());
         } catch (WebClientResponseException.NotFound e) {
-            long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][" + tweetId + "][SYNOPTIC][TWEET][" + elapsed + "ms] Not found");
-            return Optional.empty();
-        } catch (WebClientResponseException e) {
-            long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][" + tweetId + "][ERROR][SYNOPTIC][TWEET][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
-            return Optional.empty();
+            if (!silent) {
+                long elapsed = System.currentTimeMillis() - start;
+                System.out.println("[" + System.currentTimeMillis() + "][" + tweetId + "][SYNOPTIC][TWEET][" + elapsed + "ms] Not found");
+            }
+            return JsonLookupResult.notFound();
         } catch (Exception e) {
-            long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][" + tweetId + "][ERROR][SYNOPTIC][TWEET][" + elapsed + "ms] " + e.getMessage());
-            return Optional.empty();
+            if (!silent) {
+                long elapsed = System.currentTimeMillis() - start;
+                System.out.println("[" + System.currentTimeMillis() + "][" + tweetId + "][ERROR][SYNOPTIC][TWEET][" + elapsed + "ms] " + e.getMessage());
+            }
+            return JsonLookupResult.error();
         }
     }
 
-    public Optional<JsonNode> getUsersById(List<String> userIds) {
+    /**
+     * Fetches a tweet by ID with logging enabled.
+     */
+    public Optional<JsonNode> getTweet(String tweetId) {
+        return getTweet(tweetId, false).toOptional();
+    }
+
+    /**
+     * Fetches users by IDs.
+     * @param userIds list of user IDs
+     * @param silent if true, suppresses logging (for batch operations)
+     * @return JsonLookupResult containing the data array (not individual users)
+     */
+    public JsonLookupResult getUsersById(List<String> userIds, boolean silent) {
+        if (userIds == null || userIds.isEmpty()) {
+            return JsonLookupResult.notFound();
+        }
+        RateLimiter.waitForPermission(usersByIdRateLimiter);
         long start = System.currentTimeMillis();
-        String commaSeparatedUserIds = userIds.stream().reduce((a, b) -> a + "," + b).orElse("");
+        String commaSeparatedUserIds = String.join(",", userIds);
         try {
             JsonNode response = webClient.get()
                     .uri(uriBuilder -> uriBuilder
@@ -62,24 +101,36 @@ public class SynopticClient {
                     .block();
 
             Optional<JsonNode> result = extractData(response);
-            long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][" + commaSeparatedUserIds + "][SYNOPTIC][USER][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
-            return result;
+            if (!silent) {
+                long elapsed = System.currentTimeMillis() - start;
+                System.out.println("[" + System.currentTimeMillis() + "][" + commaSeparatedUserIds + "][SYNOPTIC][USER][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
+            }
+            return result.map(JsonLookupResult::found).orElse(JsonLookupResult.notFound());
         } catch (WebClientResponseException.NotFound e) {
-            long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][" + commaSeparatedUserIds + "][SYNOPTIC][USER][" + elapsed + "ms] Not found");
-            return Optional.empty();
-        } catch (WebClientResponseException e) {
-            long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][" + commaSeparatedUserIds + "][ERROR][SYNOPTIC][USER][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
-            return Optional.empty();
+            if (!silent) {
+                long elapsed = System.currentTimeMillis() - start;
+                System.out.println("[" + System.currentTimeMillis() + "][" + commaSeparatedUserIds + "][SYNOPTIC][USER][" + elapsed + "ms] Not found");
+            }
+            return JsonLookupResult.notFound();
         } catch (Exception e) {
-            long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][" + commaSeparatedUserIds + "][ERROR][SYNOPTIC][USER][" + elapsed + "ms] " + e.getMessage());
-            return Optional.empty();
+            if (!silent) {
+                long elapsed = System.currentTimeMillis() - start;
+                System.out.println("[" + System.currentTimeMillis() + "][" + commaSeparatedUserIds + "][ERROR][SYNOPTIC][USER][" + elapsed + "ms] " + e.getMessage());
+            }
+            return JsonLookupResult.error();
         }
     }
 
+    /**
+     * Fetches users by IDs with logging enabled.
+     */
+    public Optional<JsonNode> getUsersById(List<String> userIds) {
+        return getUsersById(userIds, false).toOptional();
+    }
+
+    /**
+     * Fetches a single user by ID with logging enabled.
+     */
     public Optional<JsonNode> getUserById(String userId) {
         Optional<JsonNode> usersById = getUsersById(List.of(userId));
         return usersById.flatMap(usersNode -> {
@@ -91,7 +142,13 @@ public class SynopticClient {
         });
     }
 
-    public Optional<JsonNode> getUserByUsername(String username) {
+    /**
+     * Fetches a user by username.
+     * @param username the username (without @)
+     * @param silent if true, suppresses logging (for batch operations)
+     */
+    public JsonLookupResult getUserByUsername(String username, boolean silent) {
+        RateLimiter.waitForPermission(userByUsernameRateLimiter);
         long start = System.currentTimeMillis();
         try {
             JsonNode response = webClient.get()
@@ -104,25 +161,40 @@ public class SynopticClient {
                     .block();
 
             Optional<JsonNode> result = extractFirstFromData(response);
-            long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][@" + username + "][SYNOPTIC][USER][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
-            return result;
+            if (!silent) {
+                long elapsed = System.currentTimeMillis() - start;
+                System.out.println("[" + System.currentTimeMillis() + "][@" + username + "][SYNOPTIC][USER][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
+            }
+            return result.map(JsonLookupResult::found).orElse(JsonLookupResult.notFound());
         } catch (WebClientResponseException.NotFound e) {
-            long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][@" + username + "][SYNOPTIC][USER][" + elapsed + "ms] Not found");
-            return Optional.empty();
-        } catch (WebClientResponseException e) {
-            long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][@" + username + "][ERROR][SYNOPTIC][USER][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
-            return Optional.empty();
+            if (!silent) {
+                long elapsed = System.currentTimeMillis() - start;
+                System.out.println("[" + System.currentTimeMillis() + "][@" + username + "][SYNOPTIC][USER][" + elapsed + "ms] Not found");
+            }
+            return JsonLookupResult.notFound();
         } catch (Exception e) {
-            long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][@" + username + "][ERROR][SYNOPTIC][USER][" + elapsed + "ms] " + e.getMessage());
-            return Optional.empty();
+            if (!silent) {
+                long elapsed = System.currentTimeMillis() - start;
+                System.out.println("[" + System.currentTimeMillis() + "][@" + username + "][ERROR][SYNOPTIC][USER][" + elapsed + "ms] " + e.getMessage());
+            }
+            return JsonLookupResult.error();
         }
     }
 
-    public Optional<JsonNode> getCommunity(String communityId) {
+    /**
+     * Fetches a user by username with logging enabled.
+     */
+    public Optional<JsonNode> getUserByUsername(String username) {
+        return getUserByUsername(username, false).toOptional();
+    }
+
+    /**
+     * Fetches a community by ID.
+     * @param communityId the community ID
+     * @param silent if true, suppresses logging (for batch operations)
+     */
+    public JsonLookupResult getCommunity(String communityId, boolean silent) {
+        RateLimiter.waitForPermission(communityRateLimiter);
         long start = System.currentTimeMillis();
         try {
             JsonNode response = webClient.get()
@@ -134,92 +206,31 @@ public class SynopticClient {
                     .block();
 
             Optional<JsonNode> result = extractData(response);
-            long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][" + communityId + "][SYNOPTIC][COMMUNITY][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
-            return result;
+            if (!silent) {
+                long elapsed = System.currentTimeMillis() - start;
+                System.out.println("[" + System.currentTimeMillis() + "][" + communityId + "][SYNOPTIC][COMMUNITY][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
+            }
+            return result.map(JsonLookupResult::found).orElse(JsonLookupResult.notFound());
         } catch (WebClientResponseException.NotFound e) {
-            long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][" + communityId + "][SYNOPTIC][COMMUNITY][" + elapsed + "ms] Not found");
-            return Optional.empty();
-        } catch (WebClientResponseException e) {
-            long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][" + communityId + "][ERROR][SYNOPTIC][COMMUNITY][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
-            return Optional.empty();
-        } catch (Exception e) {
-            long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][" + communityId + "][ERROR][SYNOPTIC][COMMUNITY][" + elapsed + "ms] " + e.getMessage());
-            return Optional.empty();
-        }
-    }
-
-    /**
-     * Fetches users by IDs without logging (for batch operations).
-     * Returns the data array directly.
-     */
-    public Optional<JsonNode> getUsersByIdSilent(List<String> userIds) {
-        if (userIds == null || userIds.isEmpty()) {
-            return Optional.empty();
-        }
-        String commaSeparatedUserIds = String.join(",", userIds);
-        try {
-            JsonNode response = webClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/users/lookup")
-                            .queryParam("user_ids", commaSeparatedUserIds)
-                            .build())
-                    .retrieve()
-                    .bodyToMono(JsonNode.class)
-                    .block();
-
-            return extractData(response);
-        } catch (Exception e) {
-            return Optional.empty();
-        }
-    }
-
-    /**
-     * Fetches a user by username without logging (for batch operations).
-     */
-    public Optional<JsonNode> getUserByUsernameSilent(String username) {
-        try {
-            JsonNode response = webClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/users/lookup")
-                            .queryParam("screen_name", username)
-                            .build())
-                    .retrieve()
-                    .bodyToMono(JsonNode.class)
-                    .block();
-
-            return extractFirstFromData(response);
-        } catch (Exception e) {
-            return Optional.empty();
-        }
-    }
-
-    /**
-     * Fetches a user by username for batch operations.
-     * Returns a result that distinguishes between found, not-found, and error.
-     */
-    public JsonLookupResult fetchUserByUsername(String username) {
-        try {
-            JsonNode response = webClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/users/lookup")
-                            .queryParam("screen_name", username)
-                            .build())
-                    .retrieve()
-                    .bodyToMono(JsonNode.class)
-                    .block();
-
-            Optional<JsonNode> userNode = extractFirstFromData(response);
-            if (userNode.isPresent()) {
-                return JsonLookupResult.found(userNode.get());
+            if (!silent) {
+                long elapsed = System.currentTimeMillis() - start;
+                System.out.println("[" + System.currentTimeMillis() + "][" + communityId + "][SYNOPTIC][COMMUNITY][" + elapsed + "ms] Not found");
             }
             return JsonLookupResult.notFound();
         } catch (Exception e) {
+            if (!silent) {
+                long elapsed = System.currentTimeMillis() - start;
+                System.out.println("[" + System.currentTimeMillis() + "][" + communityId + "][ERROR][SYNOPTIC][COMMUNITY][" + elapsed + "ms] " + e.getMessage());
+            }
             return JsonLookupResult.error();
         }
+    }
+
+    /**
+     * Fetches a community by ID with logging enabled.
+     */
+    public Optional<JsonNode> getCommunity(String communityId) {
+        return getCommunity(communityId, false).toOptional();
     }
 
     private Optional<JsonNode> extractFirstFromData(JsonNode response) {

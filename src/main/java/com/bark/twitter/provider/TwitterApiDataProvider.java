@@ -1,6 +1,7 @@
 package com.bark.twitter.provider;
 
 import com.bark.twitter.client.TwitterApiClient;
+import com.bark.twitter.dto.BatchCommunityMemberCountResult;
 import com.bark.twitter.dto.BatchUserResult;
 import com.bark.twitter.dto.axion.AxionCommunityDto;
 import com.bark.twitter.dto.axion.AxionTweetDto;
@@ -71,6 +72,11 @@ public class TwitterApiDataProvider implements TwitterDataProvider {
     @Override
     public BatchUserResult getUsersByUsernames(List<String> usernames) {
         throw new UnsupportedOperationException("Batch user fetch by usernames not supported by TwitterAPI.io");
+    }
+
+    @Override
+    public BatchCommunityMemberCountResult getCommunityMemberCounts(List<String> communityIds) {
+        throw new UnsupportedOperationException("Batch community member count fetch not supported by TwitterAPI.io");
     }
 
     /**

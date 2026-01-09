@@ -1,5 +1,6 @@
 package com.bark.twitter.provider;
 
+import com.bark.twitter.dto.BatchCommunityMemberCountResult;
 import com.bark.twitter.dto.BatchUserResult;
 import com.bark.twitter.dto.axion.AxionCommunityDto;
 import com.bark.twitter.dto.axion.AxionTweetDto;
@@ -71,4 +72,13 @@ public interface TwitterDataProvider {
      * @return batch result with found users (keyed by lowercase username), not-found, and errors
      */
     BatchUserResult getUsersByUsernames(List<String> usernames);
+
+    /**
+     * Batch fetches community member counts by their IDs.
+     * Returns found member counts, not-found IDs, and errored IDs separately.
+     *
+     * @param communityIds list of community IDs to fetch
+     * @return batch result with found member counts (keyed by communityId), not-found, and errors
+     */
+    BatchCommunityMemberCountResult getCommunityMemberCounts(List<String> communityIds);
 }

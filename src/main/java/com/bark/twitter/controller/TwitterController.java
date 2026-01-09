@@ -2,6 +2,7 @@ package com.bark.twitter.controller;
 
 import com.bark.twitter.config.ApiKeyInterceptor;
 import com.bark.twitter.dto.ErrorResponse;
+import com.bark.twitter.dto.CommunityMemberCountsResponseDto;
 import com.bark.twitter.dto.FollowsResponseDto;
 import com.bark.twitter.dto.axion.AxionCommunityDto;
 import com.bark.twitter.dto.axion.AxionTweetDto;
@@ -203,6 +204,48 @@ public class TwitterController {
 
         System.out.println("[" + start + "][REQUEST][FOLLOWS] GET /follows?user_handles=" + userHandles);
         var result = twitterService.getFollowsByUsernames(usernames, apiKey);
+        // Delay response if billable to hide caching (only when response would be too fast)
+        if (result.billableCount() > 0) {
+            delayCacheHit(start);
+        }
+        return result.response();
+    }
+
+    @GetMapping("/communities")
+    @Operation(summary = "Get member counts for multiple communities",
+            description = "Fetches member counts for a batch of Twitter communities by their IDs. " +
+                    "Charges 1 credit per community. Cache TTL: 2 minutes, billing period: 1 minute.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Community member counts returned",
+                    content = @Content(schema = @Schema(implementation = CommunityMemberCountsResponseDto.class))),
+            @ApiResponse(responseCode = "400", description = "No community IDs provided",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"error\": \"No community IDs provided\"}"))),
+            @ApiResponse(responseCode = "401", description = "Missing API key",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"error\": \"Missing x-api-key header\"}"))),
+            @ApiResponse(responseCode = "403", description = "Invalid API key or insufficient credits",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"error\": \"Insufficient credits for 10 communities\"}")))
+    })
+    public CommunityMemberCountsResponseDto getCommunityMemberCounts(
+            @Parameter(description = "Comma-separated list of community IDs")
+            @RequestParam("ids") String ids,
+            HttpServletRequest request) {
+        long start = System.currentTimeMillis();
+        String apiKey = (String) request.getAttribute(ApiKeyInterceptor.API_KEY_ATTRIBUTE);
+
+        List<String> communityIds = Arrays.stream(ids.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+
+        if (communityIds.isEmpty()) {
+            throw new BadRequestException("No community IDs provided");
+        }
+
+        System.out.println("[" + start + "][REQUEST][COMMUNITIES] GET /communities?ids=" + ids);
+        var result = twitterService.getCommunityMemberCounts(communityIds, apiKey);
         // Delay response if billable to hide caching (only when response would be too fast)
         if (result.billableCount() > 0) {
             delayCacheHit(start);

@@ -7,7 +7,8 @@ public record CacheProperties(
         EndpointCacheConfig tweets,
         EndpointCacheConfig users,
         EndpointCacheConfig communities,
-        EndpointCacheConfig follows
+        EndpointCacheConfig follows,
+        EndpointCacheConfig communityMemberCounts
 ) {
     public record EndpointCacheConfig(int ttlMinutes, int billingPeriodMinutes) {
         public long ttlMs() {

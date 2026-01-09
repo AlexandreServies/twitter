@@ -5,7 +5,9 @@ import com.bark.twitter.cache.UsernameCacheService;
 import com.bark.twitter.config.ApiKeyInterceptor;
 import com.bark.twitter.config.CacheProperties;
 import com.bark.twitter.credits.CreditService;
+import com.bark.twitter.dto.BatchCommunityMemberCountResult;
 import com.bark.twitter.dto.BatchUserResult;
+import com.bark.twitter.dto.CommunityMemberCountsResponseDto;
 import com.bark.twitter.dto.FollowsResponseDto;
 import com.bark.twitter.dto.axion.AxionCommunityDto;
 import com.bark.twitter.dto.axion.AxionTweetDto;
@@ -31,6 +33,7 @@ import java.util.function.Supplier;
 public class TwitterService {
 
     public record FollowsResult(FollowsResponseDto response, boolean hadCacheMisses, int billableCount) {}
+    public record CommunityMemberCountsResult(CommunityMemberCountsResponseDto response, int billableCount) {}
 
     private final TwitterDataProvider dataProvider;
     private final VideoCacheWarmingService videoCacheWarmingService;
@@ -44,6 +47,7 @@ public class TwitterService {
     private final Cache usersCache;
     private final Cache communitiesCache;
     private final Cache followsCache;
+    private final Cache communityMemberCountsCache;
 
     public TwitterService(TwitterDataProvider dataProvider,
                           VideoCacheWarmingService videoCacheWarmingService,
@@ -66,6 +70,7 @@ public class TwitterService {
         this.usersCache = cacheManager.getCache("users");
         this.communitiesCache = cacheManager.getCache("communities");
         this.followsCache = cacheManager.getCache("follows");
+        this.communityMemberCountsCache = cacheManager.getCache("community-member-counts");
     }
 
     public AxionTweetDto getTweet(String tweetId) {
@@ -261,8 +266,12 @@ public class TwitterService {
         int errorCount = errorsList.size();
 
         // 10. Track detailed usage
-        detailedUsageTrackingService.recordApiCalls(apiKey, "/follows", synopticFetched);
+        // - hit: cache hits (served from cache)
+        // - miss: cache misses (had to call Synoptic)
+        // - found: items Synoptic actually found and charged for
         detailedUsageTrackingService.recordCacheHits(apiKey, "/follows", dataCacheHits);
+        detailedUsageTrackingService.recordCacheMisses(apiKey, "/follows", dataCacheMisses);
+        detailedUsageTrackingService.recordFoundItems(apiKey, "/follows", synopticFetched);
 
         long elapsed = System.currentTimeMillis() - start;
 
@@ -278,6 +287,111 @@ public class TwitterService {
         }
 
         return new FollowsResult(new FollowsResponseDto(usersMap, notFoundList, errorsList), dataCacheMisses > 0, billableCount);
+    }
+
+    /**
+     * Batch fetches community member counts for multiple community IDs.
+     * Data is cached for TTL, but credits are only charged when billing period expires.
+     */
+    @SuppressWarnings("unchecked")
+    public CommunityMemberCountsResult getCommunityMemberCounts(List<String> communityIds, String apiKey) {
+        long start = System.currentTimeMillis();
+        long billingPeriodMs = cacheProperties.communityMemberCounts().billingPeriodMs();
+
+        // Build response map and track what needs fetching/billing
+        Map<String, Long> communitiesMap = new HashMap<>();
+        List<String> notFoundList = new ArrayList<>();
+        List<String> errorsList = new ArrayList<>();
+        List<String> idsToFetch = new ArrayList<>();
+
+        // Track cache entries that need billing update (cache hit but billing expired)
+        List<String> cacheKeysNeedingBillingUpdate = new ArrayList<>();
+        Map<String, CachedData<Long>> cachedEntriesForBillingUpdate = new HashMap<>();
+
+        int dataCacheHits = 0;
+        int dataCacheMisses = 0;
+        int billableCount = 0;
+
+        for (String communityId : communityIds) {
+            CachedData<Long> cached = (CachedData<Long>) communityMemberCountsCache.get(communityId, CachedData.class);
+
+            if (cached != null) {
+                // Cache hit - check if billable
+                communitiesMap.put(communityId, cached.data());
+                dataCacheHits++;
+
+                if (cached.isBillable(billingPeriodMs)) {
+                    billableCount++;
+                    cacheKeysNeedingBillingUpdate.add(communityId);
+                    cachedEntriesForBillingUpdate.put(communityId, cached);
+                }
+            } else {
+                // Cache miss - need to fetch
+                dataCacheMisses++;
+                billableCount++;
+                idsToFetch.add(communityId);
+            }
+        }
+
+        // Check and deduct credits for billable requests
+        if (billableCount > 0) {
+            if (!creditService.decrementCredits(apiKey, billableCount)) {
+                throw new NoCreditsException("Insufficient credits for " + billableCount + " communities");
+            }
+        }
+
+        // Update billing timestamps for cache hits that were billed
+        for (String cacheKey : cacheKeysNeedingBillingUpdate) {
+            CachedData<Long> cached = cachedEntriesForBillingUpdate.get(cacheKey);
+            communityMemberCountsCache.put(cacheKey, cached.withUpdatedBilling());
+        }
+
+        // Record usage (only for billable requests)
+        usageTrackingService.recordCalls(apiKey, "/communities", billableCount);
+
+        // Fetch uncached communities via provider
+        long fetchStart = System.currentTimeMillis();
+        BatchCommunityMemberCountResult fetchResult = dataProvider.getCommunityMemberCounts(idsToFetch);
+        long fetchDuration = System.currentTimeMillis() - fetchStart;
+
+        // Track latency for Synoptic fetches (only if we actually fetched something)
+        if (!idsToFetch.isEmpty()) {
+            latencyTracker.recordCacheMiss("/communities", fetchDuration);
+        }
+
+        // Process results - add to response and cache
+        for (Map.Entry<String, Long> entry : fetchResult.getFound().entrySet()) {
+            String communityId = entry.getKey();
+            Long memberCount = entry.getValue();
+            communitiesMap.put(communityId, memberCount);
+            communityMemberCountsCache.put(communityId, CachedData.of(memberCount));
+        }
+
+        notFoundList.addAll(fetchResult.getNotFound());
+        errorsList.addAll(fetchResult.getErrors());
+
+        // Track detailed usage
+        int synopticFetched = fetchResult.getFound().size();
+        detailedUsageTrackingService.recordCacheHits(apiKey, "/communities", dataCacheHits);
+        detailedUsageTrackingService.recordCacheMisses(apiKey, "/communities", dataCacheMisses);
+        detailedUsageTrackingService.recordFoundItems(apiKey, "/communities", synopticFetched);
+
+        long elapsed = System.currentTimeMillis() - start;
+
+        // Log summary only if there were cache misses
+        if (dataCacheMisses > 0) {
+            System.out.println("[" + System.currentTimeMillis() + "][" + apiKey.substring(0, 8) + "][COMMUNITIES][SUMMARY] " +
+                    "dataCacheHits=" + dataCacheHits + " dataCacheMisses=" + dataCacheMisses +
+                    " billable=" + billableCount +
+                    " synopticCalls=" + idsToFetch.size() +
+                    " found=" + communitiesMap.size() + " notFound=" + notFoundList.size() + " errors=" + errorsList.size() +
+                    " duration=" + elapsed + "ms");
+        }
+
+        return new CommunityMemberCountsResult(
+                new CommunityMemberCountsResponseDto(communitiesMap, notFoundList, errorsList),
+                billableCount
+        );
     }
 
     /**
@@ -322,13 +436,18 @@ public class TwitterService {
                 throw new NoCreditsException("No credits remaining");
             }
             usageTrackingService.recordCall(apiKey, endpoint);
-            detailedUsageTrackingService.recordApiCall(apiKey, endpoint);
+            detailedUsageTrackingService.recordCacheMiss(apiKey, endpoint);
         }
 
         long start = System.currentTimeMillis();
         T data = fetcher.get();
         cache.put(cacheKey, CachedData.of(data));
         latencyTracker.recordCacheMiss(endpoint, System.currentTimeMillis() - start);
+
+        // Only record "found" if data was returned (Synoptic doesn't charge for not-found)
+        if (apiKey != null && data != null) {
+            detailedUsageTrackingService.recordFound(apiKey, endpoint);
+        }
 
         return data;
     }
