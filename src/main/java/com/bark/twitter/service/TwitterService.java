@@ -7,6 +7,7 @@ import com.bark.twitter.config.CacheProperties;
 import com.bark.twitter.credits.CreditService;
 import com.bark.twitter.dto.BatchCommunityMemberCountResult;
 import com.bark.twitter.dto.BatchUserResult;
+import com.bark.twitter.dto.CommunityDataDto;
 import com.bark.twitter.dto.CommunityMemberCountsResponseDto;
 import com.bark.twitter.dto.FollowsResponseDto;
 import com.bark.twitter.dto.axion.AxionCommunityDto;
@@ -299,7 +300,7 @@ public class TwitterService {
         long billingPeriodMs = cacheProperties.communityMemberCounts().billingPeriodMs();
 
         // Build response map and track what needs fetching/billing
-        Map<String, Long> communitiesMap = new HashMap<>();
+        Map<String, CommunityDataDto> communitiesMap = new HashMap<>();
         List<String> notFoundList = new ArrayList<>();
         List<String> errorsList = new ArrayList<>();
         List<String> idsToFetch = new ArrayList<>();
@@ -317,7 +318,7 @@ public class TwitterService {
 
             if (cached != null) {
                 // Cache hit - check if billable
-                communitiesMap.put(communityId, cached.data());
+                communitiesMap.put(communityId, new CommunityDataDto(cached.data()));
                 dataCacheHits++;
 
                 if (cached.isBillable(billingPeriodMs)) {
@@ -363,7 +364,7 @@ public class TwitterService {
         for (Map.Entry<String, Long> entry : fetchResult.getFound().entrySet()) {
             String communityId = entry.getKey();
             Long memberCount = entry.getValue();
-            communitiesMap.put(communityId, memberCount);
+            communitiesMap.put(communityId, new CommunityDataDto(memberCount));
             communityMemberCountsCache.put(communityId, CachedData.of(memberCount));
         }
 

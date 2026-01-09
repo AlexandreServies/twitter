@@ -8,13 +8,13 @@ import java.util.Map;
 
 /**
  * Response DTO for the /communities endpoint.
- * Contains member counts for found communities, plus lists of not-found and errored community IDs.
+ * Contains community data for found communities, plus lists of not-found and errored community IDs.
  */
-@Schema(description = "Response containing member counts for requested communities")
+@Schema(description = "Response containing data for requested communities")
 public record CommunityMemberCountsResponseDto(
-        @Schema(description = "Map of community ID to member count for successfully fetched communities",
-                example = "{\"1234567890\": 50000, \"9876543210\": 12500}")
-        Map<String, Long> communities,
+        @Schema(description = "Map of community ID to community data for successfully fetched communities",
+                example = "{\"1234567890\": {\"memberCount\": 50000}, \"9876543210\": {\"memberCount\": 12500}}")
+        Map<String, CommunityDataDto> communities,
 
         @Schema(description = "List of community IDs that were not found",
                 example = "[\"nonexistent123\"]")
