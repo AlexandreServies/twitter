@@ -46,8 +46,8 @@ management:
 synoptic:
   api:
     base-url: https://api.synoptic.com/twttr-api
-#    api-key: 1f0be122-a228-6700-b695-83f536d5a900 # barkdotgg account
-    api-key: 1f0e812c-1034-6e00-af6d-99735eb638f0 # secondary account
+    api-key: 1f0be122-a228-6700-b695-83f536d5a900 # barkdotgg account
+#    api-key: 1f0e812c-1034-6e00-af6d-99735eb638f0 # secondary account
     connect-timeout-ms: 5000
     read-timeout-ms: 10000
 

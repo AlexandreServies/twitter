@@ -22,7 +22,7 @@ public class CacheConfig {
 
         cacheManager.registerCustomCache("users",
                 Caffeine.newBuilder()
-                        .expireAfterWrite(15, TimeUnit.MINUTES)
+                        .expireAfterWrite(30, TimeUnit.MINUTES)
                         .build());
 
         cacheManager.registerCustomCache("communities",

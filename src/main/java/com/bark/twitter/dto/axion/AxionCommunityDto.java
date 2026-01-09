@@ -6,7 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 
 @Schema(description = "Twitter community information in Axiom format")
-@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonInclude(JsonInclude.Include.ALWAYS)
 public record AxionCommunityDto(
         @Schema(description = "Community name", example = "Tech Enthusiasts") String name,
         @Schema(description = "Community description") String description,

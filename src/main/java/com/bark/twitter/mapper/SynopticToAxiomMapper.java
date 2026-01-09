@@ -589,7 +589,7 @@ public class SynopticToAxiomMapper {
 
     private AxionCreatorDto mapCommunityCreator(JsonNode creatorNode) {
         if (creatorNode == null || creatorNode.isNull()) {
-            return null;
+            return AxionCreatorDto.empty();
         }
         return AxionCreatorDto.builder()
                 .name(getText(creatorNode, "name"))

@@ -20,6 +20,10 @@ public record AxionCreatorDto(
         return new Builder();
     }
 
+    public static AxionCreatorDto empty() {
+        return new AxionCreatorDto(null, null, null, null, null, false, null, 0, 0);
+    }
+
     public static class Builder {
         private String name;
         private String screenName;

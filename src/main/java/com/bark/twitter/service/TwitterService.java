@@ -153,27 +153,20 @@ public class TwitterService {
 
     /**
      * Batch fetches followers/following counts for multiple usernames.
-     * Uses username cache (username→userId mapping) and data cache (15min TTL) to optimize.
+     * Uses username cache (username→userId mapping) and data cache (30min TTL) to optimize.
      * Only fetches from Synoptic for users not in data cache.
+     * Credits are only deducted for cache misses.
      */
     public FollowsResponseDto getFollowsByUsernames(List<String> usernames, String apiKey) {
         long start = System.currentTimeMillis();
         int totalHandles = usernames.size();
 
-        // 1. Check and deduct credits upfront
-        if (!creditService.decrementCredits(apiKey, totalHandles)) {
-            throw new NoCreditsException("Insufficient credits for " + totalHandles + " handles");
-        }
-
-        // 2. Record usage (1 call per handle)
-        usageTrackingService.recordCalls(apiKey, "/follows", totalHandles);
-
-        // 3. Lookup userIds from username cache
+        // 1. Lookup userIds from username cache
         Map<String, String> cachedIds = usernameCacheService.getUserIds(usernames);
         int usernameCacheHits = cachedIds.size();
         int usernameCacheMisses = totalHandles - usernameCacheHits;
 
-        // 4. Build response map and track what needs fetching
+        // 2. Build response map and track what needs fetching
         Map<String, FollowsResponseDto.UserFollows> usersMap = new HashMap<>();
         List<String> notFoundList = new ArrayList<>();
         List<String> errorsList = new ArrayList<>();
@@ -215,6 +208,16 @@ public class TwitterService {
                 }
             }
         }
+
+        // 3. Check and deduct credits only for cache misses
+        if (dataCacheMisses > 0) {
+            if (!creditService.decrementCredits(apiKey, dataCacheMisses)) {
+                throw new NoCreditsException("Insufficient credits for " + dataCacheMisses + " handles");
+            }
+        }
+
+        // 4. Record usage (only for cache misses)
+        usageTrackingService.recordCalls(apiKey, "/follows", dataCacheMisses);
 
         // 5. Fetch uncached users via provider
         long fetchStart = System.currentTimeMillis();

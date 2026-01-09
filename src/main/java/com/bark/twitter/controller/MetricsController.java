@@ -7,6 +7,9 @@ import io.swagger.v3.oas.annotations.Hidden;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.micrometer.core.instrument.distribution.HistogramSnapshot;
+import io.micrometer.core.instrument.distribution.ValueAtPercentile;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -62,17 +65,39 @@ public class MetricsController {
                     : requestTimer;
 
             if (latencyTimer != null && latencyTimer.count() > 0) {
-                endpointMetrics.put("meanMs", latencyTimer.mean(TimeUnit.MILLISECONDS));
-                endpointMetrics.put("maxMs", latencyTimer.max(TimeUnit.MILLISECONDS));
-                endpointMetrics.put("p50Ms", latencyTimer.percentile(0.5, TimeUnit.MILLISECONDS));
-                endpointMetrics.put("p95Ms", latencyTimer.percentile(0.95, TimeUnit.MILLISECONDS));
-                endpointMetrics.put("p99Ms", latencyTimer.percentile(0.99, TimeUnit.MILLISECONDS));
+                endpointMetrics.put("meanMs", Math.round(latencyTimer.mean(TimeUnit.MILLISECONDS)));
+                endpointMetrics.put("maxMs", Math.round(latencyTimer.max(TimeUnit.MILLISECONDS)));
+                addPercentiles(endpointMetrics, latencyTimer);
             }
 
             result.put(springUri, endpointMetrics);
         }
 
         return result;
+    }
+
+    private void addPercentiles(Map<String, Object> metrics, Timer timer) {
+        HistogramSnapshot snapshot = timer.takeSnapshot();
+        ValueAtPercentile[] percentiles = snapshot.percentileValues();
+
+        // Default to 0 if no percentiles available
+        double p50 = 0, p95 = 0, p99 = 0;
+
+        for (ValueAtPercentile vap : percentiles) {
+            double percentile = vap.percentile();
+            double valueMs = vap.value(TimeUnit.MILLISECONDS);
+            if (Math.abs(percentile - 0.5) < 0.01) {
+                p50 = valueMs;
+            } else if (Math.abs(percentile - 0.95) < 0.01) {
+                p95 = valueMs;
+            } else if (Math.abs(percentile - 0.99) < 0.01) {
+                p99 = valueMs;
+            }
+        }
+
+        metrics.put("p50Ms", Math.round(p50));
+        metrics.put("p95Ms", Math.round(p95));
+        metrics.put("p99Ms", Math.round(p99));
     }
 
     /**
@@ -90,11 +115,9 @@ public class MetricsController {
             if (timer != null && timer.count() > 0) {
                 Map<String, Object> endpointMetrics = new LinkedHashMap<>();
                 endpointMetrics.put("count", timer.count());
-                endpointMetrics.put("meanMs", timer.mean(TimeUnit.MILLISECONDS));
-                endpointMetrics.put("maxMs", timer.max(TimeUnit.MILLISECONDS));
-                endpointMetrics.put("p50Ms", timer.percentile(0.5, TimeUnit.MILLISECONDS));
-                endpointMetrics.put("p95Ms", timer.percentile(0.95, TimeUnit.MILLISECONDS));
-                endpointMetrics.put("p99Ms", timer.percentile(0.99, TimeUnit.MILLISECONDS));
+                endpointMetrics.put("meanMs", Math.round(timer.mean(TimeUnit.MILLISECONDS)));
+                endpointMetrics.put("maxMs", Math.round(timer.max(TimeUnit.MILLISECONDS)));
+                addPercentiles(endpointMetrics, timer);
 
                 result.put(springUri, endpointMetrics);
             }
