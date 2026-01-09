@@ -27,6 +27,8 @@ import java.util.Map;
 @Service
 public class TwitterService {
 
+    public record FollowsResult(FollowsResponseDto response, boolean hadCacheMisses) {}
+
     private final TwitterDataProvider dataProvider;
     private final VideoCacheWarmingService videoCacheWarmingService;
     private final DetailedUsageTrackingService detailedUsageTrackingService;
@@ -157,7 +159,7 @@ public class TwitterService {
      * Only fetches from Synoptic for users not in data cache.
      * Credits are only deducted for cache misses.
      */
-    public FollowsResponseDto getFollowsByUsernames(List<String> usernames, String apiKey) {
+    public FollowsResult getFollowsByUsernames(List<String> usernames, String apiKey) {
         long start = System.currentTimeMillis();
         int totalHandles = usernames.size();
 
@@ -295,15 +297,17 @@ public class TwitterService {
 
         long elapsed = System.currentTimeMillis() - start;
 
-        // 10. Log summary (request/response logs are in controller)
-        System.out.println("[" + System.currentTimeMillis() + "][" + apiKey.substring(0, 8) + "][FOLLOWS][SUMMARY] " +
-                "usernameCacheHits=" + usernameCacheHits + " usernameCacheMisses=" + usernameCacheMisses +
-                " dataCacheHits=" + dataCacheHits + " dataCacheMisses=" + dataCacheMisses +
-                " synopticByIdCalls=" + synopticByIdCalls + " synopticByUsernameCalls=" + synopticByUsernameCalls +
-                " found=" + usersMap.size() + " notFound=" + notFoundCount + " errors=" + errorCount +
-                " duration=" + elapsed + "ms");
+        // 10. Log summary only if there were cache misses
+        if (dataCacheMisses > 0) {
+            System.out.println("[" + System.currentTimeMillis() + "][" + apiKey.substring(0, 8) + "][FOLLOWS][SUMMARY] " +
+                    "usernameCacheHits=" + usernameCacheHits + " usernameCacheMisses=" + usernameCacheMisses +
+                    " dataCacheHits=" + dataCacheHits + " dataCacheMisses=" + dataCacheMisses +
+                    " synopticByIdCalls=" + synopticByIdCalls + " synopticByUsernameCalls=" + synopticByUsernameCalls +
+                    " found=" + usersMap.size() + " notFound=" + notFoundCount + " errors=" + errorCount +
+                    " duration=" + elapsed + "ms");
+        }
 
-        return new FollowsResponseDto(usersMap, notFoundList, errorsList);
+        return new FollowsResult(new FollowsResponseDto(usersMap, notFoundList, errorsList), dataCacheMisses > 0);
     }
 
     private String getCurrentApiKey() {
