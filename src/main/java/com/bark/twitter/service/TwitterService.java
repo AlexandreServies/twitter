@@ -30,7 +30,7 @@ import java.util.function.Supplier;
 @Service
 public class TwitterService {
 
-    public record FollowsResult(FollowsResponseDto response, boolean hadCacheMisses) {}
+    public record FollowsResult(FollowsResponseDto response, boolean hadCacheMisses, int billableCount) {}
 
     private final TwitterDataProvider dataProvider;
     private final VideoCacheWarmingService videoCacheWarmingService;
@@ -277,7 +277,7 @@ public class TwitterService {
                     " duration=" + elapsed + "ms");
         }
 
-        return new FollowsResult(new FollowsResponseDto(usersMap, notFoundList, errorsList), dataCacheMisses > 0);
+        return new FollowsResult(new FollowsResponseDto(usersMap, notFoundList, errorsList), dataCacheMisses > 0, billableCount);
     }
 
     /**

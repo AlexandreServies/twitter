@@ -201,12 +201,12 @@ public class TwitterController {
             throw new BadRequestException("No usernames provided");
         }
 
-        System.out.println("[" + start + "][" + apiKey.substring(0, 8) + "][REQUEST][FOLLOWS] GET /follows?user_handles=" + userHandles);
+        System.out.println("[" + start + "][REQUEST][FOLLOWS] GET /follows?user_handles=" + userHandles);
         var result = twitterService.getFollowsByUsernames(usernames, apiKey);
-//        if (result.hadCacheMisses()) {
-//            long duration = System.currentTimeMillis() - start;
-//            System.out.println("[" + System.currentTimeMillis() + "][" + apiKey.substring(0, 8) + "][RESPONSE][FOLLOWS][" + duration + "ms] " + toJson(result.response()));
-//        }
+        // Delay response if billable to hide caching (only when response would be too fast)
+        if (result.billableCount() > 0) {
+            delayCacheHit(start);
+        }
         return result.response();
     }
 
