@@ -208,8 +208,6 @@ public class TwitterController {
         if (result.billableCount() > 0) {
             delayCacheHit(start);
         }
-        long duration = System.currentTimeMillis() - start;
-        System.out.println("[" + System.currentTimeMillis() + "][RESPONSE][FOLLOWS][" + duration + "ms] " + toJson(result.response()));
         return result.response();
     }
 
