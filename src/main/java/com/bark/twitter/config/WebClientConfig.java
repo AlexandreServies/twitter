@@ -37,6 +37,7 @@ public class WebClientConfig {
                 .maxLifeTime(Duration.ofMinutes(5))
                 .pendingAcquireTimeout(Duration.ofSeconds(10))
                 .evictInBackground(Duration.ofSeconds(30))
+                .metrics(true) // Enable connection pool metrics
                 .build();
 
         HttpClient httpClient = HttpClient.create(connectionProvider)

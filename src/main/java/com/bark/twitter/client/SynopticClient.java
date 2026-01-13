@@ -38,7 +38,10 @@ public class SynopticClient {
      * @param silent if true, suppresses logging (for batch operations)
      */
     public JsonLookupResult getTweet(String tweetId, boolean silent) {
+        long rateLimitStart = System.currentTimeMillis();
         RateLimiter.waitForPermission(tweetRateLimiter);
+        long rateLimitWait = System.currentTimeMillis() - rateLimitStart;
+
         long start = System.currentTimeMillis();
         try {
             JsonNode response = webClient.get()
@@ -53,19 +56,28 @@ public class SynopticClient {
             Optional<JsonNode> result = extractFirstFromData(response);
             if (!silent) {
                 long elapsed = System.currentTimeMillis() - start;
-                System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + tweetId + "][SYNOPTIC][TWEET][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
+                String extra = (rateLimitWait > 10 || elapsed > 200)
+                    ? " rl=" + rateLimitWait + "ms"
+                    : "";
+                System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + tweetId + "][SYNOPTIC][TWEET][" + elapsed + "ms" + extra + "] " + (result.isPresent() ? result.get() : "Not found"));
             }
             return result.map(JsonLookupResult::found).orElse(JsonLookupResult.notFound());
         } catch (WebClientResponseException.NotFound e) {
             if (!silent) {
                 long elapsed = System.currentTimeMillis() - start;
-                System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + tweetId + "][SYNOPTIC][TWEET][" + elapsed + "ms] Not found");
+                String extra = (rateLimitWait > 10 || elapsed > 200)
+                    ? " rl=" + rateLimitWait + "ms"
+                    : "";
+                System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + tweetId + "][SYNOPTIC][TWEET][" + elapsed + "ms" + extra + "] Not found");
             }
             return JsonLookupResult.notFound();
         } catch (Exception e) {
             if (!silent) {
                 long elapsed = System.currentTimeMillis() - start;
-                System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + tweetId + "][ERROR][SYNOPTIC][TWEET][" + elapsed + "ms] " + e.getMessage());
+                String extra = (rateLimitWait > 10 || elapsed > 200)
+                    ? " rl=" + rateLimitWait + "ms"
+                    : "";
+                System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + tweetId + "][ERROR][SYNOPTIC][TWEET][" + elapsed + "ms" + extra + "] " + e.getMessage());
             }
             return JsonLookupResult.error();
         }
