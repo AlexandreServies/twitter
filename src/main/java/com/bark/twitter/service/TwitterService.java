@@ -1,7 +1,9 @@
 package com.bark.twitter.service;
 
 import com.bark.twitter.cache.CachedData;
+import com.bark.twitter.cache.RequestCoalescer;
 import com.bark.twitter.cache.UsernameCacheService;
+import com.bark.twitter.config.ApiKeyContext;
 import com.bark.twitter.config.ApiKeyInterceptor;
 import com.bark.twitter.config.CacheProperties;
 import com.bark.twitter.credits.CreditService;
@@ -49,6 +51,7 @@ public class TwitterService {
     private final Cache communitiesCache;
     private final Cache followsCache;
     private final Cache communityMemberCountsCache;
+    private final RequestCoalescer<Object> requestCoalescer = new RequestCoalescer<>();
 
     public TwitterService(TwitterDataProvider dataProvider,
                           VideoCacheWarmingService videoCacheWarmingService,
@@ -278,7 +281,7 @@ public class TwitterService {
 
         // 11. Log summary only if there were cache misses
         if (dataCacheMisses > 0) {
-            System.out.println("[" + System.currentTimeMillis() + "][" + apiKey.substring(0, 8) + "][FOLLOWS][SUMMARY] " +
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][FOLLOWS][SUMMARY] " +
                     "usernameCacheHits=" + usernameCacheHits + " usernameCacheMisses=" + usernameCacheMisses +
                     " dataCacheHits=" + dataCacheHits + " dataCacheMisses=" + dataCacheMisses +
                     " billable=" + billableCount +
@@ -381,7 +384,7 @@ public class TwitterService {
 
         // Log summary only if there were cache misses
         if (dataCacheMisses > 0) {
-            System.out.println("[" + System.currentTimeMillis() + "][" + apiKey.substring(0, 8) + "][COMMUNITIES][SUMMARY] " +
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][COMMUNITIES][SUMMARY] " +
                     "dataCacheHits=" + dataCacheHits + " dataCacheMisses=" + dataCacheMisses +
                     " billable=" + billableCount +
                     " synopticCalls=" + idsToFetch.size() +
@@ -397,12 +400,18 @@ public class TwitterService {
 
     /**
      * Generic helper for single-item endpoints with unified billing logic.
-     * Handles cache lookup, billing period checks, credit deduction, and usage tracking.
+     * Handles cache lookup, billing period checks, credit deduction, usage tracking,
+     * and request coalescing to prevent cache stampedes.
+     *
+     * Request coalescing ensures that concurrent requests for the same cache key
+     * result in only ONE external API call. The first request (initiator) fetches
+     * the data and pays; concurrent requests (joiners) wait for the result for free.
      */
     @SuppressWarnings("unchecked")
     private <T> T getWithBilling(Cache cache, String cacheKey, String endpoint, long billingPeriodMs, Supplier<T> fetcher) {
         String apiKey = getCurrentApiKey();
 
+        // First check: cache lookup (no coalescing needed for cache hits)
         CachedData<T> cached = (CachedData<T>) cache.get(cacheKey, CachedData.class);
 
         if (cached != null) {
@@ -426,28 +435,51 @@ public class TwitterService {
                 }
             }
 
-            System.out.println("[" + System.currentTimeMillis() + "][" + cacheKey + "][CACHE_HIT][" + endpoint.substring(1).toUpperCase() + "]" +
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + cacheKey + "][CACHE_HIT][" + endpoint.substring(1).toUpperCase() + "]" +
                     (billable ? "[BILLED]" : "[FREE]"));
             return cached.data();
         }
 
-        // Cache miss - always billable
-        if (apiKey != null) {
-            if (!creditService.decrementCredit(apiKey)) {
-                throw new NoCreditsException("No credits remaining");
+        // Cache miss - use request coalescing to prevent stampede
+        // Only the initiator (first request) will execute the fetch and pay
+        // Joiners (concurrent requests) wait for the result for free
+        RequestCoalescer.CoalescedResult<Object> result = requestCoalescer.execute(cacheKey, () -> {
+            // Double-check cache (another request may have just populated it)
+            CachedData<T> doubleCheck = (CachedData<T>) cache.get(cacheKey, CachedData.class);
+            if (doubleCheck != null) {
+                return doubleCheck.data();
             }
-            usageTrackingService.recordCall(apiKey, endpoint);
-            detailedUsageTrackingService.recordCacheMiss(apiKey, endpoint);
-        }
 
-        long start = System.currentTimeMillis();
-        T data = fetcher.get();
-        cache.put(cacheKey, CachedData.of(data));
-        latencyTracker.recordCacheMiss(endpoint, System.currentTimeMillis() - start);
+            long start = System.currentTimeMillis();
+            T data = fetcher.get();
+            cache.put(cacheKey, CachedData.of(data));
+            latencyTracker.recordCacheMiss(endpoint, System.currentTimeMillis() - start);
+            return data;
+        });
 
-        // Only record "found" if data was returned (Synoptic doesn't charge for not-found)
-        if (apiKey != null && data != null) {
-            detailedUsageTrackingService.recordFound(apiKey, endpoint);
+        T data = (T) result.data();
+
+        if (result.isInitiator()) {
+            // Initiator pays for the fetch
+            if (apiKey != null) {
+                if (!creditService.decrementCredit(apiKey)) {
+                    throw new NoCreditsException("No credits remaining");
+                }
+                usageTrackingService.recordCall(apiKey, endpoint);
+                detailedUsageTrackingService.recordCacheMiss(apiKey, endpoint);
+
+                // Only record "found" if data was returned (Synoptic doesn't charge for not-found)
+                if (data != null) {
+                    detailedUsageTrackingService.recordFound(apiKey, endpoint);
+                }
+            }
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + cacheKey + "][CACHE_MISS][" + endpoint.substring(1).toUpperCase() + "][FETCHED]");
+        } else {
+            // Joiner got a free ride - record as cache hit (data was being fetched by another request)
+            if (apiKey != null) {
+                detailedUsageTrackingService.recordCacheHit(apiKey, endpoint);
+            }
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + cacheKey + "][CACHE_HIT][" + endpoint.substring(1).toUpperCase() + "][COALESCED]");
         }
 
         return data;

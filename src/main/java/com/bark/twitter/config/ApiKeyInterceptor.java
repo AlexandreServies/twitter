@@ -54,6 +54,15 @@ public class ApiKeyInterceptor implements HandlerInterceptor {
         // Store API key in request for service layer access
         request.setAttribute(API_KEY_ATTRIBUTE, apiKey);
 
+        // Store in thread-local for logging throughout the request chain
+        ApiKeyContext.set(apiKey);
+
         return true;
+    }
+
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
+        // Clear thread-local to prevent memory leaks
+        ApiKeyContext.clear();
     }
 }

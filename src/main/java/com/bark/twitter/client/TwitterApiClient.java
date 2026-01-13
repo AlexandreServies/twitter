@@ -1,5 +1,6 @@
 package com.bark.twitter.client;
 
+import com.bark.twitter.config.ApiKeyContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -34,19 +35,19 @@ public class TwitterApiClient {
 
             Optional<JsonNode> result = extractFirstFromTweets(response);
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][" + tweetId + "][TWITTERAPI][TWEET][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + tweetId + "][TWITTERAPI][TWEET][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
             return result;
         } catch (WebClientResponseException.NotFound e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][" + tweetId + "][TWITTERAPI][TWEET][" + elapsed + "ms] Not found");
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + tweetId + "][TWITTERAPI][TWEET][" + elapsed + "ms] Not found");
             return Optional.empty();
         } catch (WebClientResponseException e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][" + tweetId + "][ERROR][TWITTERAPI][TWEET][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + tweetId + "][ERROR][TWITTERAPI][TWEET][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
             return Optional.empty();
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][" + tweetId + "][ERROR][TWITTERAPI][TWEET][" + elapsed + "ms] " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + tweetId + "][ERROR][TWITTERAPI][TWEET][" + elapsed + "ms] " + e.getMessage());
             return Optional.empty();
         }
     }
@@ -65,19 +66,19 @@ public class TwitterApiClient {
 
             Optional<JsonNode> result = extractUserData(response);
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][" + userId + "][TWITTERAPI][USER][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + userId + "][TWITTERAPI][USER][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
             return result;
         } catch (WebClientResponseException.NotFound e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][" + userId + "][TWITTERAPI][USER][" + elapsed + "ms] Not found");
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + userId + "][TWITTERAPI][USER][" + elapsed + "ms] Not found");
             return Optional.empty();
         } catch (WebClientResponseException e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][" + userId + "][ERROR][TWITTERAPI][USER][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + userId + "][ERROR][TWITTERAPI][USER][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
             return Optional.empty();
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][" + userId + "][ERROR][TWITTERAPI][USER][" + elapsed + "ms] " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + userId + "][ERROR][TWITTERAPI][USER][" + elapsed + "ms] " + e.getMessage());
             return Optional.empty();
         }
     }
@@ -96,19 +97,19 @@ public class TwitterApiClient {
 
             Optional<JsonNode> result = extractUserData(response);
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][@" + username + "][TWITTERAPI][USER][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][@" + username + "][TWITTERAPI][USER][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
             return result;
         } catch (WebClientResponseException.NotFound e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][@" + username + "][TWITTERAPI][USER][" + elapsed + "ms] Not found");
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][@" + username + "][TWITTERAPI][USER][" + elapsed + "ms] Not found");
             return Optional.empty();
         } catch (WebClientResponseException e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][@" + username + "][ERROR][TWITTERAPI][USER][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][@" + username + "][ERROR][TWITTERAPI][USER][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
             return Optional.empty();
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][@" + username + "][ERROR][TWITTERAPI][USER][" + elapsed + "ms] " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][@" + username + "][ERROR][TWITTERAPI][USER][" + elapsed + "ms] " + e.getMessage());
             return Optional.empty();
         }
     }
@@ -127,15 +128,15 @@ public class TwitterApiClient {
 
             Optional<JsonNode> result = extractCommunityInfo(response);
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][" + communityId + "][TWITTERAPI][COMMUNITY][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + communityId + "][TWITTERAPI][COMMUNITY][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
             return result;
         } catch (WebClientResponseException e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][" + communityId + "][ERROR][TWITTERAPI][COMMUNITY][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + communityId + "][ERROR][TWITTERAPI][COMMUNITY][" + elapsed + "ms] " + e.getStatusCode() + " " + e.getMessage());
             return Optional.empty();
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
-            System.out.println("[" + System.currentTimeMillis() + "][" + communityId + "][ERROR][TWITTERAPI][COMMUNITY][" + elapsed + "ms] " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + communityId + "][ERROR][TWITTERAPI][COMMUNITY][" + elapsed + "ms] " + e.getMessage());
             return Optional.empty();
         }
     }

@@ -1,5 +1,6 @@
 package com.bark.twitter.provider;
 
+import com.bark.twitter.config.ApiKeyContext;
 import com.bark.twitter.dto.BatchCommunityMemberCountResult;
 import com.bark.twitter.dto.BatchUserResult;
 import com.bark.twitter.dto.axion.AxionCommunityDto;
@@ -168,7 +169,7 @@ public class SmartTwitterDataProvider implements TwitterDataProvider {
         } catch (Exception e) {
             long latency = System.currentTimeMillis() - start;
             healthMonitor.recordError(activeSource, endpoint);
-            System.out.println("[" + System.currentTimeMillis() + "][" + id + "][SMART][" + endpoint + "] " + activeSource + " ERROR: " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + id + "][SMART][" + endpoint + "] " + activeSource + " ERROR: " + e.getMessage());
             sourceManager.triggerHealthCheck(endpoint);
             throw e;
         }
@@ -211,7 +212,7 @@ public class SmartTwitterDataProvider implements TwitterDataProvider {
         } catch (Exception e) {
             long latency = System.currentTimeMillis() - start;
             healthMonitor.recordError(primarySource, endpoint);
-            System.out.println("[" + System.currentTimeMillis() + "][" + id + "][SHADOW][" + endpoint + "] " + primarySource + " ERROR: " + e.getMessage());
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + id + "][SHADOW][" + endpoint + "] " + primarySource + " ERROR: " + e.getMessage());
         }
 
         // Trigger health check after shadow request

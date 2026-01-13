@@ -1,5 +1,6 @@
 package com.bark.twitter.client;
 
+import com.bark.twitter.config.ApiKeyContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.github.resilience4j.ratelimiter.RateLimiter;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -52,19 +53,19 @@ public class SynopticClient {
             Optional<JsonNode> result = extractFirstFromData(response);
             if (!silent) {
                 long elapsed = System.currentTimeMillis() - start;
-                System.out.println("[" + System.currentTimeMillis() + "][" + tweetId + "][SYNOPTIC][TWEET][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
+                System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + tweetId + "][SYNOPTIC][TWEET][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
             }
             return result.map(JsonLookupResult::found).orElse(JsonLookupResult.notFound());
         } catch (WebClientResponseException.NotFound e) {
             if (!silent) {
                 long elapsed = System.currentTimeMillis() - start;
-                System.out.println("[" + System.currentTimeMillis() + "][" + tweetId + "][SYNOPTIC][TWEET][" + elapsed + "ms] Not found");
+                System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + tweetId + "][SYNOPTIC][TWEET][" + elapsed + "ms] Not found");
             }
             return JsonLookupResult.notFound();
         } catch (Exception e) {
             if (!silent) {
                 long elapsed = System.currentTimeMillis() - start;
-                System.out.println("[" + System.currentTimeMillis() + "][" + tweetId + "][ERROR][SYNOPTIC][TWEET][" + elapsed + "ms] " + e.getMessage());
+                System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + tweetId + "][ERROR][SYNOPTIC][TWEET][" + elapsed + "ms] " + e.getMessage());
             }
             return JsonLookupResult.error();
         }
@@ -103,19 +104,19 @@ public class SynopticClient {
             Optional<JsonNode> result = extractData(response);
             if (!silent) {
                 long elapsed = System.currentTimeMillis() - start;
-                System.out.println("[" + System.currentTimeMillis() + "][" + commaSeparatedUserIds + "][SYNOPTIC][USER][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
+                System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + commaSeparatedUserIds + "][SYNOPTIC][USER][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
             }
             return result.map(JsonLookupResult::found).orElse(JsonLookupResult.notFound());
         } catch (WebClientResponseException.NotFound e) {
             if (!silent) {
                 long elapsed = System.currentTimeMillis() - start;
-                System.out.println("[" + System.currentTimeMillis() + "][" + commaSeparatedUserIds + "][SYNOPTIC][USER][" + elapsed + "ms] Not found");
+                System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + commaSeparatedUserIds + "][SYNOPTIC][USER][" + elapsed + "ms] Not found");
             }
             return JsonLookupResult.notFound();
         } catch (Exception e) {
             if (!silent) {
                 long elapsed = System.currentTimeMillis() - start;
-                System.out.println("[" + System.currentTimeMillis() + "][" + commaSeparatedUserIds + "][ERROR][SYNOPTIC][USER][" + elapsed + "ms] " + e.getMessage());
+                System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + commaSeparatedUserIds + "][ERROR][SYNOPTIC][USER][" + elapsed + "ms] " + e.getMessage());
             }
             return JsonLookupResult.error();
         }
@@ -163,19 +164,19 @@ public class SynopticClient {
             Optional<JsonNode> result = extractFirstFromData(response);
             if (!silent) {
                 long elapsed = System.currentTimeMillis() - start;
-                System.out.println("[" + System.currentTimeMillis() + "][@" + username + "][SYNOPTIC][USER][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
+                System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][@" + username + "][SYNOPTIC][USER][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
             }
             return result.map(JsonLookupResult::found).orElse(JsonLookupResult.notFound());
         } catch (WebClientResponseException.NotFound e) {
             if (!silent) {
                 long elapsed = System.currentTimeMillis() - start;
-                System.out.println("[" + System.currentTimeMillis() + "][@" + username + "][SYNOPTIC][USER][" + elapsed + "ms] Not found");
+                System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][@" + username + "][SYNOPTIC][USER][" + elapsed + "ms] Not found");
             }
             return JsonLookupResult.notFound();
         } catch (Exception e) {
             if (!silent) {
                 long elapsed = System.currentTimeMillis() - start;
-                System.out.println("[" + System.currentTimeMillis() + "][@" + username + "][ERROR][SYNOPTIC][USER][" + elapsed + "ms] " + e.getMessage());
+                System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][@" + username + "][ERROR][SYNOPTIC][USER][" + elapsed + "ms] " + e.getMessage());
             }
             return JsonLookupResult.error();
         }
@@ -208,19 +209,19 @@ public class SynopticClient {
             Optional<JsonNode> result = extractData(response);
             if (!silent) {
                 long elapsed = System.currentTimeMillis() - start;
-                System.out.println("[" + System.currentTimeMillis() + "][" + communityId + "][SYNOPTIC][COMMUNITY][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
+                System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + communityId + "][SYNOPTIC][COMMUNITY][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
             }
             return result.map(JsonLookupResult::found).orElse(JsonLookupResult.notFound());
         } catch (WebClientResponseException.NotFound e) {
             if (!silent) {
                 long elapsed = System.currentTimeMillis() - start;
-                System.out.println("[" + System.currentTimeMillis() + "][" + communityId + "][SYNOPTIC][COMMUNITY][" + elapsed + "ms] Not found");
+                System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + communityId + "][SYNOPTIC][COMMUNITY][" + elapsed + "ms] Not found");
             }
             return JsonLookupResult.notFound();
         } catch (Exception e) {
             if (!silent) {
                 long elapsed = System.currentTimeMillis() - start;
-                System.out.println("[" + System.currentTimeMillis() + "][" + communityId + "][ERROR][SYNOPTIC][COMMUNITY][" + elapsed + "ms] " + e.getMessage());
+                System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + communityId + "][ERROR][SYNOPTIC][COMMUNITY][" + elapsed + "ms] " + e.getMessage());
             }
             return JsonLookupResult.error();
         }

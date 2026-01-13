@@ -1,5 +1,6 @@
 package com.bark.twitter.controller;
 
+import com.bark.twitter.config.ApiKeyContext;
 import com.bark.twitter.config.ApiKeyInterceptor;
 import com.bark.twitter.dto.ErrorResponse;
 import com.bark.twitter.dto.CommunityMemberCountsResponseDto;
@@ -85,11 +86,12 @@ public class TwitterController {
     })
     public AxionTweetDto getTweet(@Parameter(description = "Tweet ID") @PathVariable String id) {
         long start = System.currentTimeMillis();
-        System.out.println("[" + start + "][" + id + "][REQUEST][TWEET] GET /tweet/" + id);
+        String keyPrefix = ApiKeyContext.getLogPrefix();
+        System.out.println("[" + start + "][" + keyPrefix + "][" + id + "][REQUEST][TWEET] GET /tweet/" + id);
         AxionTweetDto response = twitterService.getTweet(id);
         delayCacheHit(start);
         long duration = System.currentTimeMillis() - start;
-        System.out.println("[" + System.currentTimeMillis() + "][" + id + "][RESPONSE][TWEET][" + duration + "ms] " + toJson(response));
+        System.out.println("[" + System.currentTimeMillis() + "][" + keyPrefix + "][" + id + "][RESPONSE][TWEET][" + duration + "ms] " + toJson(response));
         return response;
     }
 
@@ -113,7 +115,8 @@ public class TwitterController {
     })
     public AxionUserInfoDto getUser(@Parameter(description = "Numeric user ID or @handle") @PathVariable String idOrHandle) {
         long start = System.currentTimeMillis();
-        System.out.println("[" + start + "][" + idOrHandle + "][REQUEST][USER] GET /user/" + idOrHandle);
+        String keyPrefix = ApiKeyContext.getLogPrefix();
+        System.out.println("[" + start + "][" + keyPrefix + "][" + idOrHandle + "][REQUEST][USER] GET /user/" + idOrHandle);
 
         AxionUserInfoDto response;
         if (idOrHandle.startsWith("@")) {
@@ -128,7 +131,7 @@ public class TwitterController {
 
         delayCacheHit(start);
         long duration = System.currentTimeMillis() - start;
-        System.out.println("[" + System.currentTimeMillis() + "][" + idOrHandle + "][RESPONSE][USER][" + duration + "ms] " + toJson(response));
+        System.out.println("[" + System.currentTimeMillis() + "][" + keyPrefix + "][" + idOrHandle + "][RESPONSE][USER][" + duration + "ms] " + toJson(response));
         return response;
     }
 
@@ -161,11 +164,12 @@ public class TwitterController {
     })
     public AxionCommunityDto getCommunity(@Parameter(description = "Community ID") @PathVariable String id) {
         long start = System.currentTimeMillis();
-        System.out.println("[" + start + "][" + id + "][REQUEST][COMMUNITY] GET /community/" + id);
+        String keyPrefix = ApiKeyContext.getLogPrefix();
+        System.out.println("[" + start + "][" + keyPrefix + "][" + id + "][REQUEST][COMMUNITY] GET /community/" + id);
         AxionCommunityDto response = twitterService.getCommunity(id);
         delayCacheHit(start);
         long duration = System.currentTimeMillis() - start;
-        System.out.println("[" + System.currentTimeMillis() + "][" + id + "][RESPONSE][COMMUNITY][" + duration + "ms] " + toJson(response));
+        System.out.println("[" + System.currentTimeMillis() + "][" + keyPrefix + "][" + id + "][RESPONSE][COMMUNITY][" + duration + "ms] " + toJson(response));
         return response;
     }
 
@@ -202,7 +206,8 @@ public class TwitterController {
             throw new BadRequestException("No usernames provided");
         }
 
-        System.out.println("[" + start + "][REQUEST][FOLLOWS] GET /follows?user_handles=" + userHandles);
+        String keyPrefix = ApiKeyContext.getLogPrefix();
+        System.out.println("[" + start + "][" + keyPrefix + "][REQUEST][FOLLOWS] GET /follows?user_handles=" + userHandles);
         var result = twitterService.getFollowsByUsernames(usernames, apiKey);
         // Delay response if billable to hide caching (only when response would be too fast)
         if (result.billableCount() > 0) {
@@ -244,7 +249,8 @@ public class TwitterController {
             throw new BadRequestException("No community IDs provided");
         }
 
-        System.out.println("[" + start + "][REQUEST][COMMUNITIES] GET /communities?ids=" + ids);
+        String keyPrefix = ApiKeyContext.getLogPrefix();
+        System.out.println("[" + start + "][" + keyPrefix + "][REQUEST][COMMUNITIES] GET /communities?ids=" + ids);
         var result = twitterService.getCommunityMemberCounts(communityIds, apiKey);
         // Delay response if billable to hide caching (only when response would be too fast)
         if (result.billableCount() > 0) {
