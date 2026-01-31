@@ -15,5 +15,5 @@ jobs:
           curl -X POST "${{ secrets.DISCORD_WEBHOOK }}" \
             -H "Content-Type: application/json" \
             -d '{
-              "content": "🔀 **${{ github.repository }}** PR #${{ github.event.pull_request.number }} merged: ${{ github.event.pull_request.title }}"
+              "content": "<@1467024653066436639> 🔀 **${{ github.repository }}** PR #${{ github.event.pull_request.number }} merged: ${{ github.event.pull_request.title }}"
             }'
