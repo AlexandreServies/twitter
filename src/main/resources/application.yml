@@ -13,8 +13,12 @@ spring:
     name: twitter
   main:
     lazy-initialization: true
-  cache:
-    type: caffeine
+  data:
+    redis:
+      host: ${REDIS_HOST:}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+      connect-timeout: 2000ms
 
 logging:
   pattern:
