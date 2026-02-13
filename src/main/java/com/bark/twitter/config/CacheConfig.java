@@ -1,7 +1,7 @@
 package com.bark.twitter.config;
 
+import com.bark.twitter.cache.ErrorHandlingCacheManager;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -64,10 +64,13 @@ public class CacheConfig {
         cacheConfigs.put("community-member-counts", defaultConfig.entryTtl(
                 Duration.ofMinutes(cacheProperties.communityMemberCounts().ttlMinutes())));
 
-        return RedisCacheManager.builder(connectionFactory)
+        RedisCacheManager redisCacheManager = RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)
                 .withInitialCacheConfigurations(cacheConfigs)
                 .build();
+
+        // Wrap with error handling to ensure app continues if Redis is down
+        return new ErrorHandlingCacheManager(redisCacheManager);
     }
 
     /**
