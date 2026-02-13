@@ -1,12 +1,24 @@
 package com.bark.twitter.config;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.data.redis.cache.RedisCacheConfiguration;
+import org.springframework.data.redis.cache.RedisCacheManager;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializationContext;
 
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @Configuration
@@ -19,8 +31,53 @@ public class CacheConfig {
         this.cacheProperties = cacheProperties;
     }
 
+    /**
+     * Redis cache manager - used when REDIS_HOST environment variable is set.
+     * Provides shared caching across all instances.
+     */
     @Bean
-    public CacheManager cacheManager() {
+    @Primary
+    @ConditionalOnProperty(name = "spring.data.redis.host", matchIfMissing = false)
+    public CacheManager redisCacheManager(RedisConnectionFactory connectionFactory) {
+        System.out.println("[CACHE] Using Redis cache manager");
+
+        GenericJackson2JsonRedisSerializer serializer = new GenericJackson2JsonRedisSerializer();
+
+        RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(serializer))
+                .disableCachingNullValues();
+
+        Map<String, RedisCacheConfiguration> cacheConfigs = new HashMap<>();
+
+        cacheConfigs.put("tweets", defaultConfig.entryTtl(
+                Duration.ofMinutes(cacheProperties.tweets().ttlMinutes())));
+
+        cacheConfigs.put("users", defaultConfig.entryTtl(
+                Duration.ofMinutes(cacheProperties.users().ttlMinutes())));
+
+        cacheConfigs.put("communities", defaultConfig.entryTtl(
+                Duration.ofMinutes(cacheProperties.communities().ttlMinutes())));
+
+        cacheConfigs.put("follows", defaultConfig.entryTtl(
+                Duration.ofMinutes(cacheProperties.follows().ttlMinutes())));
+
+        cacheConfigs.put("community-member-counts", defaultConfig.entryTtl(
+                Duration.ofMinutes(cacheProperties.communityMemberCounts().ttlMinutes())));
+
+        return RedisCacheManager.builder(connectionFactory)
+                .cacheDefaults(defaultConfig)
+                .withInitialCacheConfigurations(cacheConfigs)
+                .build();
+    }
+
+    /**
+     * Caffeine cache manager - fallback for local development without Redis.
+     */
+    @Bean
+    @ConditionalOnMissingBean(CacheManager.class)
+    public CacheManager caffeineCacheManager() {
+        System.out.println("[CACHE] Using Caffeine cache manager (local/fallback)");
+
         CaffeineCacheManager cacheManager = new CaffeineCacheManager();
 
         cacheManager.registerCustomCache("tweets",
