@@ -104,17 +104,47 @@ public class SynopticDataProvider implements TwitterDataProvider {
             }
         }
 
-        // Second call: get creator user data
+        // Second call: get creator user data with retries
         JsonNode creatorData = null;
         if (creatorUserId != null) {
-            creatorData = synopticClient.getUserById(creatorUserId).orElse(null);
+            creatorData = getUserByIdWithRetry(creatorUserId, 3);
             if (creatorData != null) {
                 // Cache creator full user data
                 usernameCacheService.cacheFromSynopticUser(creatorData);
             }
         }
 
+        // Fallback to partial creator data from community response if enrichment failed
+        if (creatorData == null && creatorNode != null && !creatorNode.isNull()) {
+            creatorData = creatorNode;
+        }
+
         return axiomMapper.mapCommunity(communityData, creatorData);
+    }
+
+    /**
+     * Fetches user by ID with retries for transient errors.
+     * @param userId the user ID to fetch
+     * @param maxRetries maximum number of retry attempts
+     * @return the user data, or null if all attempts fail
+     */
+    private JsonNode getUserByIdWithRetry(String userId, int maxRetries) {
+        for (int attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                Optional<JsonNode> result = synopticClient.getUserById(userId);
+                if (result.isPresent()) {
+                    return result.get();
+                }
+                // Not found (404) - don't retry
+                return null;
+            } catch (Exception e) {
+                // Retry on exceptions (500s, timeouts, etc.)
+                if (attempt == maxRetries) {
+                    return null;
+                }
+            }
+        }
+        return null;
     }
 
     @Override
