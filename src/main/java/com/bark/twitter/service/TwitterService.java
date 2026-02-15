@@ -82,6 +82,7 @@ public class TwitterService {
                 tweetsCache,
                 tweetId,
                 "/tweet",
+                cacheProperties.tweets().ttlMs(),
                 cacheProperties.tweets().billingPeriodMs(),
                 () -> dataProvider.getTweet(tweetId)
         );
@@ -95,6 +96,7 @@ public class TwitterService {
                 usersCache,
                 userId,
                 "/user",
+                cacheProperties.users().ttlMs(),
                 cacheProperties.users().billingPeriodMs(),
                 () -> dataProvider.getUser(userId)
         );
@@ -105,6 +107,7 @@ public class TwitterService {
                 communitiesCache,
                 communityId,
                 "/community",
+                cacheProperties.communities().ttlMs(),
                 cacheProperties.communities().billingPeriodMs(),
                 () -> dataProvider.getCommunity(communityId)
         );
@@ -115,6 +118,7 @@ public class TwitterService {
                 usersCache,
                 "username:" + username,
                 "/user",
+                cacheProperties.users().ttlMs(),
                 cacheProperties.users().billingPeriodMs(),
                 () -> dataProvider.getUserByUsername(username)
         );
@@ -408,14 +412,14 @@ public class TwitterService {
      * the data and pays; concurrent requests (joiners) wait for the result for free.
      */
     @SuppressWarnings("unchecked")
-    private <T> T getWithBilling(Cache cache, String cacheKey, String endpoint, long billingPeriodMs, Supplier<T> fetcher) {
+    private <T> T getWithBilling(Cache cache, String cacheKey, String endpoint, long ttlMs, long billingPeriodMs, Supplier<T> fetcher) {
         String apiKey = getCurrentApiKey();
 
         // First check: cache lookup (no coalescing needed for cache hits)
         CachedData<T> cached = (CachedData<T>) cache.get(cacheKey, CachedData.class);
 
-        if (cached != null) {
-            // Cache hit - check if billable
+        if (cached != null && !cached.isStale(ttlMs)) {
+            // Cache hit and not stale - check if billable
             boolean billable = cached.isBillable(billingPeriodMs);
 
             if (billable) {
@@ -438,6 +442,11 @@ public class TwitterService {
             System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + cacheKey + "][CACHE_HIT][" + endpoint.substring(1).toUpperCase() + "]" +
                     (billable ? "[BILLED]" : "[FREE]"));
             return cached.data();
+        }
+        
+        // Log if we're treating a stale cache entry as a miss
+        if (cached != null) {
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + cacheKey + "][CACHE_STALE][" + endpoint.substring(1).toUpperCase() + "]");
         }
 
         // Cache miss - use request coalescing to prevent stampede

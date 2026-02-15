@@ -35,6 +35,17 @@ public record CachedData<T>(
     }
 
     /**
+     * Checks if this cached entry is stale based on TTL.
+     * This is separate from Redis TTL because billing updates can reset Redis TTL.
+     *
+     * @param ttlMs The TTL in milliseconds
+     * @return true if the data is older than TTL, false otherwise
+     */
+    public boolean isStale(long ttlMs) {
+        return System.currentTimeMillis() - cachedAt > ttlMs;
+    }
+
+    /**
      * Returns a new CachedData with updated billedAt timestamp.
      * Used after successfully billing to reset the billing window.
      */
