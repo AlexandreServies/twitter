@@ -454,8 +454,9 @@ public class TwitterService {
         // Joiners (concurrent requests) wait for the result for free
         RequestCoalescer.CoalescedResult<Object> result = requestCoalescer.execute(cacheKey, () -> {
             // Double-check cache (another request may have just populated it)
+            // Must also check staleness to avoid returning stale data
             CachedData<T> doubleCheck = (CachedData<T>) cache.get(cacheKey, CachedData.class);
-            if (doubleCheck != null) {
+            if (doubleCheck != null && !doubleCheck.isStale(ttlMs)) {
                 return doubleCheck.data();
             }
 
