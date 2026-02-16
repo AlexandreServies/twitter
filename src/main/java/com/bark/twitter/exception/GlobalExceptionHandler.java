@@ -42,7 +42,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CoalescingTimeoutException.class)
     public ResponseEntity<ErrorResponse> handleCoalescingTimeout(CoalescingTimeoutException ex) {
         // Expected during upstream outages - log without stack trace
-        System.out.println("[" + System.currentTimeMillis() + "][WARN] " + ex.getMessage());
+        System.out.println("[" + System.currentTimeMillis() + "][ERROR] " + ex.getMessage());
         return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT)
                 .body(new ErrorResponse("Upstream service timeout"));
     }
