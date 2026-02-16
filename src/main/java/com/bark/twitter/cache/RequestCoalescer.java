@@ -1,5 +1,7 @@
 package com.bark.twitter.cache;
 
+import com.bark.twitter.exception.CoalescingTimeoutException;
+
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -54,7 +56,7 @@ public class RequestCoalescer<T> {
             } catch (TimeoutException e) {
                 // Initiator is taking too long - give up on coalescing, let this request proceed independently
                 // This prevents thread starvation if the initiator is stuck
-                throw new RuntimeException("Coalesced request timed out waiting for initiator", e);
+                throw new CoalescingTimeoutException("Coalesced request timed out waiting for initiator", e);
             } catch (CompletionException e) {
                 // Unwrap and rethrow the original exception
                 Throwable cause = e.getCause();
