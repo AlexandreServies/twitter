@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+
+import static com.bark.twitter.util.HtmlUtils.decodeHtmlEntities;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -31,7 +33,7 @@ public class SynopticToAxiomMapper {
         String tweetId = getText(synopticTweet, "tweet_id");
         String screenName = getText(synopticTweet, "screen_name");
         String tweetType = getText(synopticTweet, "tweet_type");
-        String text = getText(synopticTweet, "text");
+        String text = decodeHtmlEntities(getText(synopticTweet, "text"));
 
         boolean isReply = "REPLY".equals(tweetType);
         boolean isQuote = "QUOTE".equals(tweetType);
@@ -130,33 +132,33 @@ public class SynopticToAxiomMapper {
             // Fallback to top-level fields if user_profile is missing
             return AxionUserInfoDto.builder()
                     .userName(getText(synopticTweet, "screen_name"))
-                    .name(getText(synopticTweet, "name"))
+                    .name(decodeHtmlEntities(getText(synopticTweet, "name")))
                     .isBlueVerified(getBool(synopticTweet, "is_blue_verified"))
                     .verifiedType(getTextOrNull(synopticTweet, "verified_type"))
                     .profilePicture(getText(synopticTweet, "logo"))
                     .coverImage("")
-                    .description(getText(synopticTweet, "bio"))
+                    .description(decodeHtmlEntities(getText(synopticTweet, "bio")))
                     .location("")
                     .followers(getInt(synopticTweet, "followers_count"))
                     .following(0)
                     .createdAt("")
                     .isAutomated(false)
-                    .bioDescription(getText(synopticTweet, "bio"))
+                    .bioDescription(decodeHtmlEntities(getText(synopticTweet, "bio")))
                     .badgeInfo(null)
                     .build();
         }
 
-        String description = getText(userProfile, "description");
+        String description = decodeHtmlEntities(getText(userProfile, "description"));
 
         return AxionUserInfoDto.builder()
                 .userName(getText(userProfile, "screen_name"))
-                .name(getText(userProfile, "name"))
+                .name(decodeHtmlEntities(getText(userProfile, "name")))
                 .isBlueVerified(getBool(userProfile, "is_blue_verified"))
                 .verifiedType(getTextOrNull(userProfile, "verified_type"))
                 .profilePicture(getText(userProfile, "profile_image_url"))
                 .coverImage(getText(userProfile, "profile_banner_url"))
                 .description(description)
-                .location(getText(userProfile, "location"))
+                .location(decodeHtmlEntities(getText(userProfile, "location")))
                 .followers(getInt(userProfile, "followers_count"))
                 .following(getInt(userProfile, "following_count"))
                 .createdAt(getText(userProfile, "created_at"))
@@ -498,9 +500,9 @@ public class SynopticToAxiomMapper {
      */
     public AxionUserInfoDto mapUser(JsonNode synopticUser) {
         String screenName = getText(synopticUser, "screen_name");
-        String description = getText(synopticUser, "bio");
-        if (description.isEmpty()) {
-            description = getText(synopticUser, "description");
+        String description = decodeHtmlEntities(getText(synopticUser, "bio"));
+        if (description == null || description.isEmpty()) {
+            description = decodeHtmlEntities(getText(synopticUser, "description"));
         }
 
         // Get profile image URL - try multiple field names
@@ -517,13 +519,13 @@ public class SynopticToAxiomMapper {
 
         return AxionUserInfoDto.builder()
                 .userName(screenName)
-                .name(getText(synopticUser, "name"))
+                .name(decodeHtmlEntities(getText(synopticUser, "name")))
                 .isBlueVerified(getBool(synopticUser, "is_blue_verified"))
                 .verifiedType(getTextOrNull(synopticUser, "verified_type"))
                 .profilePicture(profilePicture)
                 .coverImage(getText(synopticUser, "profile_banner_url"))
                 .description(description)
-                .location(getText(synopticUser, "location"))
+                .location(decodeHtmlEntities(getText(synopticUser, "location")))
                 .followers(getInt(synopticUser, "followers_count"))
                 .following(getInt(synopticUser, "following_count"))
                 .createdAt(createdAt)

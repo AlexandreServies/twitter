@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.bark.twitter.util.HtmlUtils.decodeHtmlEntities;
 import static com.bark.twitter.util.TwitterMediaProxy.proxyVideoUrl;
 
 /**
@@ -22,7 +23,7 @@ public class TwitterApiToAxionMapper {
     public AxionTweetDto mapTweet(JsonNode twitterApiTweet) {
         String tweetId = getText(twitterApiTweet, "id");
         String url = getText(twitterApiTweet, "url");
-        String text = getText(twitterApiTweet, "text");
+        String text = decodeHtmlEntities(getText(twitterApiTweet, "text"));
 
         boolean isReply = getBool(twitterApiTweet, "isReply");
         boolean isQuote = getBool(twitterApiTweet, "isQuote");
@@ -89,18 +90,18 @@ public class TwitterApiToAxionMapper {
 
         return AxionUserInfoDto.builder()
                 .userName(getText(author, "userName"))
-                .name(getText(author, "name"))
+                .name(decodeHtmlEntities(getText(author, "name")))
                 .isBlueVerified(getBool(author, "isBlueVerified"))
                 .verifiedType(getTextOrNull(author, "verifiedType"))
                 .profilePicture(getText(author, "profilePicture"))
                 .coverImage(getText(author, "coverPicture"))
-                .description(getText(author, "description"))
-                .location(getText(author, "location"))
+                .description(decodeHtmlEntities(getText(author, "description")))
+                .location(decodeHtmlEntities(getText(author, "location")))
                 .followers(getInt(author, "followers"))
                 .following(getInt(author, "following"))
                 .createdAt(getText(author, "createdAt"))
                 .isAutomated(getBool(author, "isAutomated"))
-                .bioDescription(getText(author, "description"))
+                .bioDescription(decodeHtmlEntities(getText(author, "description")))
                 .badgeInfo(mapBadgeInfo(author.get("affiliatesHighlightedLabel")))
                 .build();
     }
@@ -111,13 +112,13 @@ public class TwitterApiToAxionMapper {
     public AxionUserInfoDto mapUser(JsonNode twitterApiUser) {
         return AxionUserInfoDto.builder()
                 .userName(getText(twitterApiUser, "userName"))
-                .name(getText(twitterApiUser, "name"))
+                .name(decodeHtmlEntities(getText(twitterApiUser, "name")))
                 .isBlueVerified(getBool(twitterApiUser, "isBlueVerified"))
                 .verifiedType(getTextOrNull(twitterApiUser, "verifiedType"))
                 .profilePicture(getText(twitterApiUser, "profilePicture"))
                 .coverImage(getText(twitterApiUser, "coverPicture"))
-                .description(getText(twitterApiUser, "description"))
-                .location(getText(twitterApiUser, "location"))
+                .description(decodeHtmlEntities(getText(twitterApiUser, "description")))
+                .location(decodeHtmlEntities(getText(twitterApiUser, "location")))
                 .followers(getInt(twitterApiUser, "followers"))
                 .following(getInt(twitterApiUser, "following"))
                 .createdAt(getText(twitterApiUser, "createdAt"))
