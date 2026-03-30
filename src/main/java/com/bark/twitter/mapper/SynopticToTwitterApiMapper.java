@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+
+import static com.bark.twitter.util.HtmlUtils.decodeHtmlEntities;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -38,7 +40,7 @@ public class SynopticToTwitterApiMapper {
         String tweetId = getText(synopticTweet, "tweet_id");
         String screenName = getText(synopticTweet, "screen_name");
         String tweetType = getText(synopticTweet, "tweet_type");
-        String text = getText(synopticTweet, "text");
+        String text = decodeHtmlEntities(getText(synopticTweet, "text"));
 
         boolean isReply = "REPLY".equals(tweetType);
         boolean isQuote = "QUOTE".equals(tweetType);
@@ -140,12 +142,12 @@ public class SynopticToTwitterApiMapper {
      */
     public AuthorDto mapAuthor(JsonNode synopticTweet) {
         String screenName = getText(synopticTweet, "screen_name");
-        String description = getText(synopticTweet, "bio");
+        String description = decodeHtmlEntities(getText(synopticTweet, "bio"));
 
         return AuthorDto.builder()
                 .type("user")
                 .id(getText(synopticTweet, "user_id"))
-                .name(getText(synopticTweet, "name"))
+                .name(decodeHtmlEntities(getText(synopticTweet, "name")))
                 .userName(screenName)
                 .location("") // TODO: Not available in Synoptic tweet data
                 .description(description)
@@ -174,9 +176,9 @@ public class SynopticToTwitterApiMapper {
      */
     public AuthorDto mapUser(JsonNode synopticUser) {
         String screenName = getText(synopticUser, "screen_name");
-        String description = getText(synopticUser, "bio");
-        if (description.isEmpty()) {
-            description = getText(synopticUser, "description");
+        String description = decodeHtmlEntities(getText(synopticUser, "bio"));
+        if (description == null || description.isEmpty()) {
+            description = decodeHtmlEntities(getText(synopticUser, "description"));
         }
 
         // Get profile image URL - try multiple field names
@@ -190,9 +192,9 @@ public class SynopticToTwitterApiMapper {
 
         return AuthorDto.builder()
                 .id(getText(synopticUser, "user_id"))
-                .name(getText(synopticUser, "name"))
+                .name(decodeHtmlEntities(getText(synopticUser, "name")))
                 .userName(screenName)
-                .location(getText(synopticUser, "location"))
+                .location(decodeHtmlEntities(getText(synopticUser, "location")))
                 .url(null) // TODO: Not available in Synoptic
                 .description(description)
                 .entities(UserEntitiesDto.empty())
