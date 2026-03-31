@@ -155,7 +155,7 @@ CreditService.flushDecrements()         → Batch decrement credits
 ### Third-Party APIs
 | Service | URL | Auth | Rate Limit |
 |---------|-----|------|------------|
-| Synoptic | `https://api.synoptic.com/twttr-api` | x-api-key | 40 req/sec |
+| Synoptic | `https://twttr.api.synoptic.com` | x-api-key | 40 req/sec |
 | Twitterapi.io | `https://api.twitterapi.io/twitter` | X-API-Key | N/A |
 | Pushover | `https://api.pushover.net/1/messages.json` | API key | N/A |
 
