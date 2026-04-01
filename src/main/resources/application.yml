@@ -1,5 +1,6 @@
 server:
   port: 5000
+  forward-headers-strategy: native
   tomcat:
     threads:
       max: 200
