@@ -8,27 +8,36 @@ package com.bark.twitter.config;
 public class ApiKeyContext {
 
     private static final ThreadLocal<String> apiKey = new ThreadLocal<>();
+    private static final ThreadLocal<String> ipAddress = new ThreadLocal<>();
 
     public static void set(String key) {
         apiKey.set(key);
+    }
+
+    public static void setIpAddress(String ip) {
+        ipAddress.set(ip);
     }
 
     public static String get() {
         return apiKey.get();
     }
 
+    public static String getIpAddress() {
+        return ipAddress.get();
+    }
+
     public static void clear() {
         apiKey.remove();
+        ipAddress.remove();
     }
 
     /**
-     * Returns first 4 characters of API key for logging, or "????" if not set.
+     * Returns first 4 characters of API key + IP address for logging, or "????" if not set.
      */
     public static String getLogPrefix() {
         String key = apiKey.get();
-        if (key == null || key.length() < 4) {
-            return "????";
-        }
-        return key.substring(0, 4);
+        String keyPrefix = (key == null || key.length() < 4) ? "????" : key.substring(0, 4);
+        String ip = ipAddress.get();
+        return ip != null ? keyPrefix + "|" + ip : keyPrefix;
     }
 }

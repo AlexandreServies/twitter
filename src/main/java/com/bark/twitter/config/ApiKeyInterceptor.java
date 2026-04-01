@@ -56,6 +56,7 @@ public class ApiKeyInterceptor implements HandlerInterceptor {
 
         // Store in thread-local for logging throughout the request chain
         ApiKeyContext.set(apiKey);
+        ApiKeyContext.setIpAddress(getClientIpAddress(request));
 
         return true;
     }
