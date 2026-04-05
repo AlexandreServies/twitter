@@ -4,7 +4,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
 import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.ReturnValue;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 
 import java.util.HashMap;
@@ -59,11 +61,57 @@ public class CreditRepository {
     }
 
     /**
-     * Atomically decrements credits for an API key.
-     * Uses ADD with negative value for atomic decrement.
+     * Atomically claims credits from DynamoDB using a conditional decrement.
+     * Tries to claim the requested amount; if not enough, claims whatever is available.
+     * Returns the number of credits actually claimed.
      */
-    public CompletableFuture<Void> decrementCredits(String apiKey, long amount) {
-        return updateCredits(apiKey, -amount);
+    public long claimCredits(String apiKey, long amount) {
+        Map<String, AttributeValue> key = Map.of("pk", AttributeValue.builder().s(apiKey).build());
+
+        // First attempt: claim full amount if enough credits exist
+        try {
+            UpdateItemRequest request = UpdateItemRequest.builder()
+                    .tableName(tableName)
+                    .key(key)
+                    .updateExpression("SET #credits = #credits - :amount")
+                    .conditionExpression("#credits >= :amount")
+                    .expressionAttributeNames(Map.of("#credits", "credits"))
+                    .expressionAttributeValues(Map.of(":amount", AttributeValue.builder().n(String.valueOf(amount)).build()))
+                    .build();
+
+            dynamoDbClient.updateItem(request).join();
+            return amount;
+        } catch (Exception e) {
+            if (!isCausedByConditionCheck(e)) {
+                System.err.println("[" + System.currentTimeMillis() + "][CREDITS] Failed to claim credits: " + e.getMessage());
+                return 0;
+            }
+        }
+
+        // Fallback: claim whatever remains (set to 0 and get old value)
+        try {
+            UpdateItemRequest request = UpdateItemRequest.builder()
+                    .tableName(tableName)
+                    .key(key)
+                    .updateExpression("SET #credits = :zero")
+                    .conditionExpression("#credits > :zero")
+                    .expressionAttributeNames(Map.of("#credits", "credits"))
+                    .expressionAttributeValues(Map.of(":zero", AttributeValue.builder().n("0").build()))
+                    .returnValues(ReturnValue.ALL_OLD)
+                    .build();
+
+            var response = dynamoDbClient.updateItem(request).join();
+            AttributeValue oldCredits = response.attributes().get("credits");
+            if (oldCredits != null && oldCredits.n() != null) {
+                return Long.parseLong(oldCredits.n());
+            }
+            return 0;
+        } catch (Exception e) {
+            if (!isCausedByConditionCheck(e)) {
+                System.err.println("[" + System.currentTimeMillis() + "][CREDITS] Failed to claim remaining credits: " + e.getMessage());
+            }
+            return 0;
+        }
     }
 
     /**
@@ -74,8 +122,12 @@ public class CreditRepository {
     }
 
     /**
-     * Atomically updates credits by the given delta (positive or negative).
+     * Atomically decrements credits for an API key.
      */
+    public CompletableFuture<Void> decrementCredits(String apiKey, long amount) {
+        return updateCredits(apiKey, -amount);
+    }
+
     private CompletableFuture<Void> updateCredits(String apiKey, long delta) {
         Map<String, AttributeValue> key = new HashMap<>();
         key.put("pk", AttributeValue.builder().s(apiKey).build());
@@ -97,5 +149,16 @@ public class CreditRepository {
                     System.err.println("[" + System.currentTimeMillis() + "][CREDITS] Failed to update credits: " + e.getMessage());
                     return null;
                 });
+    }
+
+    private boolean isCausedByConditionCheck(Throwable e) {
+        Throwable cause = e;
+        while (cause != null) {
+            if (cause instanceof ConditionalCheckFailedException) {
+                return true;
+            }
+            cause = cause.getCause();
+        }
+        return false;
     }
 }

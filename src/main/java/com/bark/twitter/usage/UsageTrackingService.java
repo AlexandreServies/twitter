@@ -1,6 +1,5 @@
 package com.bark.twitter.usage;
 
-import com.bark.twitter.credits.CreditService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -19,11 +18,9 @@ public class UsageTrackingService {
 
     private final ConcurrentHashMap<UsageKey, LongAdder> accumulator = new ConcurrentHashMap<>();
     private final UsageRepository repository;
-    private final CreditService creditService;
 
-    public UsageTrackingService(UsageRepository repository, CreditService creditService) {
+    public UsageTrackingService(UsageRepository repository) {
         this.repository = repository;
-        this.creditService = creditService;
     }
 
     /**
@@ -87,8 +84,5 @@ public class UsageTrackingService {
             // Async write to DynamoDB - fire and forget
             repository.batchUpdateCountsAsync(records);
         }
-
-        // Flush pending credit decrements
-        creditService.flushDecrements();
     }
 }

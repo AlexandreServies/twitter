@@ -1,72 +1,50 @@
 package com.bark.twitter.credits;
 
-import com.bark.twitter.config.SecurityConfig;
-import jakarta.annotation.PostConstruct;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.LongAdder;
 
 /**
- * Service for managing API credits with in-memory tracking.
- * Credits are cached in memory for fast access and decremented atomically.
- * Pending decrements are flushed to DynamoDB periodically by UsageTrackingService.
+ * Service for managing API credits using a batch leasing model.
+ * <p>
+ * Each instance claims small batches of credits atomically from DynamoDB.
+ * API calls decrement from the local batch (zero latency).
+ * When a batch is exhausted, a new one is claimed from DynamoDB.
+ * A periodic sync returns local batches to DynamoDB every 5 seconds,
+ * ensuring all instances converge quickly after add/remove operations.
+ * This is multi-instance safe: DynamoDB is always the source of truth.
  */
 @Service
 public class CreditService {
 
+    private static final long BATCH_SIZE = 500;
+
     private final CreditRepository creditRepository;
-    private final SecurityConfig securityConfig;
 
-    // In-memory cache of current credits per API key
-    private final ConcurrentHashMap<String, AtomicLong> creditsCache = new ConcurrentHashMap<>();
+    // Local batch of claimed credits per API key
+    private final ConcurrentHashMap<String, AtomicLong> localBatch = new ConcurrentHashMap<>();
 
-    // Pending decrements to be flushed to DynamoDB
-    private final ConcurrentHashMap<String, LongAdder> pendingDecrements = new ConcurrentHashMap<>();
+    // Per-key locks for batch claiming and returning (prevents concurrent claim/return races)
+    private final ConcurrentHashMap<String, Object> claimLocks = new ConcurrentHashMap<>();
 
-    public CreditService(CreditRepository creditRepository, SecurityConfig securityConfig) {
+    public CreditService(CreditRepository creditRepository) {
         this.creditRepository = creditRepository;
-        this.securityConfig = securityConfig;
     }
 
     /**
-     * Loads credits for all configured API keys on startup.
-     */
-    @PostConstruct
-    public void loadCreditsOnStartup() {
-        for (String apiKey : securityConfig.getApiKeys()) {
-            try {
-                long credits = creditRepository.getCredits(apiKey).join();
-                creditsCache.put(apiKey, new AtomicLong(credits));
-                System.out.println("[" + System.currentTimeMillis() + "][CREDITS] Loaded " + credits + " credits for API key " + apiKey);
-            } catch (Exception e) {
-                System.err.println("[" + System.currentTimeMillis() + "][CREDITS] Failed to load credits for API key " + apiKey + ": " + e.getMessage());
-                creditsCache.put(apiKey, new AtomicLong(0));
-            }
-        }
-    }
-
-    /**
-     * Checks if the API key has credits remaining.
-     */
-    public boolean hasCredits(String apiKey) {
-        AtomicLong credits = creditsCache.get(apiKey);
-        return credits != null && credits.get() > 0;
-    }
-
-    /**
-     * Gets the current credit balance for an API key.
+     * Gets the current credit balance accurately.
+     * Returns this instance's local batch to DynamoDB first, then reads DynamoDB.
+     * Used for admin/reporting endpoints only, not for hot-path credit checks.
      */
     public long getCredits(String apiKey) {
-        AtomicLong credits = creditsCache.get(apiKey);
-        return credits != null ? credits.get() : 0;
+        returnLocalBatch(apiKey);
+        return creditRepository.getCredits(apiKey).join();
     }
 
     /**
      * Decrements one credit from the API key.
-     * This is called for each API request.
      * Returns true if credit was successfully decremented, false if no credits available.
      */
     public boolean decrementCredit(String apiKey) {
@@ -75,75 +53,96 @@ public class CreditService {
 
     /**
      * Decrements multiple credits from the API key.
-     * Used for batch operations where multiple credits need to be deducted.
-     * Returns true if credits were successfully decremented, false if insufficient credits.
+     * Fast path: uses local batch (no I/O). Slow path: claims a new batch from DynamoDB.
      */
     public boolean decrementCredits(String apiKey, long amount) {
         if (amount <= 0) {
             return true;
         }
 
-        AtomicLong credits = creditsCache.get(apiKey);
-        if (credits == null) {
-            return false;
-        }
+        AtomicLong local = localBatch.computeIfAbsent(apiKey, k -> new AtomicLong(0));
 
-        // Atomically decrement if sufficient credits
-        long current;
-        do {
-            current = credits.get();
-            if (current < amount) {
+        // Fast path: try CAS decrement from local batch
+        while (true) {
+            long current = local.get();
+            if (current >= amount) {
+                if (local.compareAndSet(current, current - amount)) {
+                    return true;
+                }
+                continue; // CAS contention, retry
+            }
+
+            // Not enough locally — claim more from DynamoDB
+            if (!ensureLocalCredits(apiKey, amount)) {
                 return false;
             }
-        } while (!credits.compareAndSet(current, current - amount));
-
-        // Track pending decrement for flush
-        pendingDecrements.computeIfAbsent(apiKey, k -> new LongAdder()).add(amount);
-        return true;
+            // Retry the CAS with the newly claimed credits
+        }
     }
 
     /**
-     * Adds credits to an API key.
-     * Updates both in-memory cache and DynamoDB immediately.
+     * Adds credits to an API key. Updates DynamoDB immediately.
      */
     public void addCredits(String apiKey, long amount) {
-        // Update in-memory cache
-        creditsCache.computeIfAbsent(apiKey, k -> new AtomicLong(0)).addAndGet(amount);
-
-        // Update DynamoDB immediately
-        creditRepository.addCredits(apiKey, amount);
-
-        System.out.println("[" + System.currentTimeMillis() + "][CREDITS] Added " + amount + " credits to API key");
-    }
-
-    public void removeCredits(String apiKey, long amount) {
-        // Update in-memory cache
-        creditsCache.computeIfAbsent(apiKey, k -> new AtomicLong(0)).addAndGet(-amount);
-
-        // Update DynamoDB immediately
-        creditRepository.decrementCredits(apiKey, amount);
-
-        System.out.println("[" + System.currentTimeMillis() + "][CREDITS] Removed " + amount + " credits from API key");
+        creditRepository.addCredits(apiKey, amount).join();
+        System.out.println("[" + System.currentTimeMillis() + "][CREDITS] Added " + amount + " credits for API key " + apiKey);
     }
 
     /**
-     * Flushes pending decrements to DynamoDB.
-     * Called by UsageTrackingService during its periodic flush.
+     * Removes credits from an API key. Updates DynamoDB immediately.
+     * Returns local batch to DynamoDB first to ensure accurate removal.
      */
-    public void flushDecrements() {
-        if (pendingDecrements.isEmpty()) {
-            return;
+    public void removeCredits(String apiKey, long amount) {
+        returnLocalBatch(apiKey);
+        creditRepository.decrementCredits(apiKey, amount).join();
+        System.out.println("[" + System.currentTimeMillis() + "][CREDITS] Removed " + amount + " credits for API key " + apiKey);
+    }
+
+    /**
+     * Periodically returns all local batches to DynamoDB.
+     * Ensures all instances converge on the DB truth within 5 seconds,
+     * so add/remove operations propagate to all instances quickly.
+     */
+    @Scheduled(fixedRate = 5000)
+    public void syncBatches() {
+        for (String apiKey : localBatch.keySet()) {
+            returnLocalBatch(apiKey);
         }
+    }
 
-        var iterator = pendingDecrements.entrySet().iterator();
-        while (iterator.hasNext()) {
-            Map.Entry<String, LongAdder> entry = iterator.next();
-            String apiKey = entry.getKey();
-            long decrementAmount = entry.getValue().sumThenReset();
+    /**
+     * Returns any locally held batch credits back to DynamoDB.
+     */
+    private void returnLocalBatch(String apiKey) {
+        AtomicLong local = localBatch.get(apiKey);
+        if (local == null) return;
 
-            if (decrementAmount > 0) {
-                creditRepository.decrementCredits(apiKey, decrementAmount);
+        Object lock = claimLocks.computeIfAbsent(apiKey, k -> new Object());
+        synchronized (lock) {
+            long remaining = local.getAndSet(0);
+            if (remaining > 0) {
+                creditRepository.addCredits(apiKey, remaining).join();
             }
+        }
+    }
+
+    private boolean ensureLocalCredits(String apiKey, long needed) {
+        Object lock = claimLocks.computeIfAbsent(apiKey, k -> new Object());
+        synchronized (lock) {
+            AtomicLong local = localBatch.computeIfAbsent(apiKey, k -> new AtomicLong(0));
+            if (local.get() >= needed) {
+                return true; // Another thread already claimed
+            }
+
+            long toClaim = Math.max(BATCH_SIZE, needed);
+            long claimed = creditRepository.claimCredits(apiKey, toClaim);
+            if (claimed <= 0) {
+                return false;
+            }
+
+            local.addAndGet(claimed);
+            System.out.println("[" + System.currentTimeMillis() + "][CREDITS] Claimed batch of " + claimed + " credits for API key " + apiKey);
+            return local.get() >= needed;
         }
     }
 }
