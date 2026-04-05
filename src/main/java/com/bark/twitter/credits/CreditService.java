@@ -103,7 +103,7 @@ public class CreditService {
      * Ensures all instances converge on the DB truth within 5 seconds,
      * so add/remove operations propagate to all instances quickly.
      */
-    @Scheduled(fixedRate = 5000)
+    @Scheduled(fixedRate = 30000)
     public void syncBatches() {
         for (String apiKey : localBatch.keySet()) {
             returnLocalBatch(apiKey);
