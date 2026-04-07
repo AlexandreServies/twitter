@@ -51,6 +51,17 @@ public class SynopticClient {
                     .block();
 
             Optional<JsonNode> result = extractFirstFromData(response);
+            // Validate that Synoptic returned the correct tweet (it sometimes returns a completely different tweet)
+            if (result.isPresent()) {
+                String returnedId = result.get().path("tweet_id").asText("");
+                if (!returnedId.isEmpty() && !returnedId.equals(tweetId)) {
+                    if (!silent) {
+                        long elapsed = System.currentTimeMillis() - start;
+                        System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + tweetId + "][ERROR][SYNOPTIC][TWEET][" + elapsed + "ms] ID mismatch: requested " + tweetId + " but got " + returnedId);
+                    }
+                    return JsonLookupResult.error();
+                }
+            }
             if (!silent) {
                 long elapsed = System.currentTimeMillis() - start;
                 System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + tweetId + "][SYNOPTIC][TWEET][" + elapsed + "ms] " + (result.isPresent() ? result.get() : "Not found"));
