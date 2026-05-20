@@ -74,6 +74,9 @@ public class TwitterController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Tweet found",
                     content = @Content(schema = @Schema(implementation = AxionTweetDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid tweet ID format",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"error\": \"Invalid tweet ID format. Must be a numeric tweet ID.\"}"))),
             @ApiResponse(responseCode = "401", description = "Missing API key",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = "{\"error\": \"Missing x-api-key header\"}"))),
@@ -88,6 +91,9 @@ public class TwitterController {
         long start = System.currentTimeMillis();
         String keyPrefix = ApiKeyContext.getLogPrefix();
         System.out.println("[" + start + "][" + keyPrefix + "][" + id + "][REQUEST][TWEET] GET /tweet/" + id);
+        if (!isValidTweetId(id)) {
+            throw new BadRequestException("Invalid tweet ID format. Must be a numeric tweet ID.");
+        }
         AxionTweetDto response = twitterService.getTweet(id);
         delayCacheHit(start);
         long duration = System.currentTimeMillis() - start;
@@ -145,6 +151,24 @@ public class TwitterController {
             }
         }
         return true;
+    }
+
+    /**
+     * A real tweet ID is a positive snowflake that fits in a signed 64-bit long.
+     * Rejecting non-numeric or out-of-range ids here means we never forward
+     * garbage to Synoptic - which would 400 and log [ERROR][SYNOPTIC], tripping
+     * the synoptic-errors alert for what is really just bad caller input.
+     */
+    private boolean isValidTweetId(String id) {
+        if (!isNumeric(id)) {
+            return false;
+        }
+        try {
+            return Long.parseLong(id) > 0;
+        } catch (NumberFormatException e) {
+            // all digits but overflows a 64-bit long - not a real tweet ID
+            return false;
+        }
     }
 
     @GetMapping("/community/{id}")
