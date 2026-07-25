@@ -91,6 +91,16 @@ security:
     - 29af871dffea7204ec3042a83d53fa69b82f5f0108f2f919817a411c18150d42 # BARK MAIN
     - eb405733432240744438efbc170997b6673c4c05a45d29018c4f51bcd5f7b4aa # GTS
 
+credits:
+  low-balance-alert:
+    # Pushover-alert when a monitored key's balance drops below this many credits. Edge-triggered:
+    # fires at most once per instance per crossing, and re-arms once the balance recovers above it.
+    threshold: 1000000
+    # label -> api key for the keys to watch (the Axiom keys).
+    keys:
+      AXIOM: 2e54206b02cb6ed997f42f5bb10d7d19ff59e80f19b334339d38d08a92fb1b71
+      AXIOM_PULSE: 7f3a91c8d4e6b2f0a5c7e9d1b3f8a2c4e6d0b5f7a9c3e1d5b7f2a8c0e4d6b9f1
+
 aws:
   region: us-east-1
   dynamodb:
