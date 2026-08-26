@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -139,6 +140,69 @@ public class TwitterController {
         long duration = System.currentTimeMillis() - start;
         System.out.println("[" + System.currentTimeMillis() + "][" + keyPrefix + "][" + idOrHandle + "][RESPONSE][USER][" + duration + "ms] " + toJson(response));
         return response;
+    }
+
+    @GetMapping("/user/{idOrHandle}/timeline")
+    @Operation(summary = "Get user timeline",
+            description = "Fetches a user's most recent tweets, newest first. Returns up to count tweets " +
+                    "(1-100, default 20); fewer if the timeline is exhausted. Retweets and quotes are included; " +
+                    "replies are excluded unless includeReplies=true. Charges 1 credit per tweet returned. " +
+                    "Not cached - always fetched live from the source.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Timeline tweets, newest first",
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = AxionTweetDto.class)))),
+            @ApiResponse(responseCode = "400", description = "Invalid user ID or count",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"error\": \"count must be an integer between 1 and 100\"}"))),
+            @ApiResponse(responseCode = "401", description = "Missing API key",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"error\": \"Missing x-api-key header\"}"))),
+            @ApiResponse(responseCode = "402", description = "Insufficient credits",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"error\": \"Insufficient credits for 20 tweets\"}"))),
+            @ApiResponse(responseCode = "403", description = "Invalid API key",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"error\": \"Invalid API key\"}"))),
+            @ApiResponse(responseCode = "404", description = "User not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"error\": \"User not found: 123456789\"}")))
+    })
+    public List<AxionTweetDto> getUserTimeline(
+            @Parameter(description = "Numeric user ID or @handle") @PathVariable String idOrHandle,
+            @Parameter(description = "Number of tweets to return (1-100)")
+            @RequestParam(name = "count", defaultValue = "20") String count,
+            @Parameter(description = "Include the user's replies (default false)")
+            @RequestParam(name = "includeReplies", defaultValue = "false") String includeReplies,
+            HttpServletRequest request) {
+        long start = System.currentTimeMillis();
+        String apiKey = (String) request.getAttribute(ApiKeyInterceptor.API_KEY_ATTRIBUTE);
+        String keyPrefix = ApiKeyContext.getLogPrefix();
+        System.out.println("[" + start + "][" + keyPrefix + "][" + idOrHandle + "][REQUEST][TIMELINE] GET /user/" + idOrHandle + "/timeline?count=" + count + "&includeReplies=" + includeReplies);
+
+        if (idOrHandle.startsWith("@")) {
+            if (idOrHandle.length() == 1) {
+                throw new BadRequestException("Invalid user ID format. Use numeric ID or @handle");
+            }
+        } else if (!isNumeric(idOrHandle)) {
+            throw new BadRequestException("Invalid user ID format. Use numeric ID or @handle");
+        }
+
+        int countValue;
+        try {
+            countValue = Integer.parseInt(count);
+        } catch (NumberFormatException e) {
+            throw new BadRequestException("count must be an integer between 1 and 100");
+        }
+        if (countValue < 1 || countValue > 100) {
+            throw new BadRequestException("count must be an integer between 1 and 100");
+        }
+
+        var result = twitterService.getUserTimeline(idOrHandle, countValue, Boolean.parseBoolean(includeReplies), apiKey);
+
+        long duration = System.currentTimeMillis() - start;
+        // Log a summary - up to 100 full tweets is too large for a response log line
+        System.out.println("[" + System.currentTimeMillis() + "][" + keyPrefix + "][" + idOrHandle + "][RESPONSE][TIMELINE][" + duration + "ms] returned=" + result.tweets().size() + " charged=" + result.charged());
+        return result.tweets();
     }
 
     private boolean isNumeric(String str) {

@@ -58,6 +58,19 @@ public class SynopticRateLimiterConfig {
     }
 
     /**
+     * Rate limiter for user timeline endpoint.
+     */
+    @Bean
+    public RateLimiter synopticTimelineRateLimiter() {
+        RateLimiterConfig config = RateLimiterConfig.custom()
+                .limitForPeriod(CALLS_PER_SECOND)
+                .limitRefreshPeriod(Duration.ofSeconds(1))
+                .timeoutDuration(Duration.ofMinutes(2)) // Wait up to 2 min for permit
+                .build();
+        return RateLimiter.of("synoptic-timeline", config);
+    }
+
+    /**
      * Rate limiter for community endpoint.
      */
     @Bean

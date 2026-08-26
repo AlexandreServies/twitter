@@ -122,6 +122,81 @@ public class SynopticDataProvider implements TwitterDataProvider {
         return axiomMapper.mapCommunity(communityData, creatorData);
     }
 
+    @Override
+    public List<AxionTweetDto> getUserTimeline(String userIdOrHandle, int count, boolean includeReplies) {
+        String userId = resolveUserId(userIdOrHandle);
+
+        List<AxionTweetDto> tweets = new ArrayList<>(count);
+        String cursor = null;
+        // Synoptic pages hold ~20 tweets each; one slack page covers the occasional short page
+        int maxPages = (count + 19) / 20 + 1;
+
+        for (int page = 0; page < maxPages && tweets.size() < count; page++) {
+            JsonLookupResult result = synopticClient.getUserTimeline(userId, cursor, includeReplies);
+            if (result.isNotFound()) {
+                if (page == 0) {
+                    throw new NotFoundException("User not found: " + userIdOrHandle);
+                }
+                break;
+            }
+            if (result.isError()) {
+                if (tweets.isEmpty()) {
+                    throw new RuntimeException("Failed to fetch timeline for user: " + userIdOrHandle);
+                }
+                // Later page failed - return what we have; billing only charges returned tweets
+                break;
+            }
+
+            JsonNode results = result.data().path("results");
+            if (!results.isArray() || results.isEmpty()) {
+                break;
+            }
+
+            for (JsonNode tweetNode : results) {
+                if (tweets.size() >= count) {
+                    break;
+                }
+                // Cache author username -> userId mapping (same as single tweet lookup)
+                usernameCacheService.cacheFromSynopticUser(tweetNode);
+                JsonNode userProfile = tweetNode.path("user_profile");
+                if (!userProfile.isMissingNode() && !userProfile.isNull()) {
+                    usernameCacheService.cacheFromSynopticUser(userProfile);
+                }
+                tweets.add(axiomMapper.mapTweet(transformMedia(tweetNode)));
+            }
+
+            cursor = result.data().path("next_cursor").asText("");
+            if (cursor.isEmpty()) {
+                break;
+            }
+        }
+        return tweets;
+    }
+
+    /**
+     * Resolves a @handle to a numeric user ID via the permanent username cache,
+     * falling back to a Synoptic user lookup (which also populates the cache).
+     * Numeric IDs pass through unchanged.
+     */
+    private String resolveUserId(String userIdOrHandle) {
+        if (!userIdOrHandle.startsWith("@")) {
+            return userIdOrHandle;
+        }
+        String handle = userIdOrHandle.substring(1);
+        String cached = usernameCacheService.getUserId(handle);
+        if (cached != null) {
+            return cached;
+        }
+        JsonNode user = synopticClient.getUserByUsername(handle)
+                .orElseThrow(() -> new NotFoundException("User not found: @" + handle));
+        usernameCacheService.cacheFromSynopticUser(user);
+        String userId = user.path("user_id").asText("");
+        if (userId.isEmpty()) {
+            throw new NotFoundException("User not found: @" + handle);
+        }
+        return userId;
+    }
+
     /**
      * Fetches user by ID with retries for transient errors.
      * @param userId the user ID to fetch
