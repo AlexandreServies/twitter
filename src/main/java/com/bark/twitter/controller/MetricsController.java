@@ -23,7 +23,8 @@ public class MetricsController {
             "/user", "/user/{idOrHandle}",
             "/community", "/community/{id}",
             "/follows", "/follows",
-            "/communities", "/communities"
+            "/communities", "/communities",
+            "/timeline", "/user/{idOrHandle}/timeline"
     );
 
     private final MeterRegistry meterRegistry;
