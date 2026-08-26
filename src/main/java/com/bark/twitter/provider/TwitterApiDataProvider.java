@@ -60,6 +60,11 @@ public class TwitterApiDataProvider implements TwitterDataProvider {
     }
 
     @Override
+    public List<AxionTweetDto> getUserTimeline(String userIdOrHandle, int count, boolean includeReplies) {
+        throw new UnsupportedOperationException("User timeline fetch not supported by TwitterAPI.io");
+    }
+
+    @Override
     public String getProviderName() {
         return "TWITTERAPI";
     }

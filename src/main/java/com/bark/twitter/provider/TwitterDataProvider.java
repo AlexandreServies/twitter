@@ -51,6 +51,17 @@ public interface TwitterDataProvider {
     AxionCommunityDto getCommunity(String communityId);
 
     /**
+     * Gets a user's most recent tweets, newest first.
+     *
+     * @param userIdOrHandle numeric user ID, or @-prefixed handle
+     * @param count maximum number of tweets to return
+     * @param includeReplies whether the user's replies are included
+     * @return up to count tweets in Axion format (fewer if the timeline is exhausted)
+     * @throws com.bark.twitter.exception.NotFoundException if user not found
+     */
+    List<AxionTweetDto> getUserTimeline(String userIdOrHandle, int count, boolean includeReplies);
+
+    /**
      * Returns the name of this provider for logging purposes.
      */
     String getProviderName();

@@ -19,17 +19,20 @@ public class SynopticClient {
     private final RateLimiter usersByIdRateLimiter;
     private final RateLimiter userByUsernameRateLimiter;
     private final RateLimiter communityRateLimiter;
+    private final RateLimiter timelineRateLimiter;
 
     public SynopticClient(WebClient synopticWebClient,
                           @Qualifier("synopticTweetRateLimiter") RateLimiter tweetRateLimiter,
                           @Qualifier("synopticUsersByIdRateLimiter") RateLimiter usersByIdRateLimiter,
                           @Qualifier("synopticUserByUsernameRateLimiter") RateLimiter userByUsernameRateLimiter,
-                          @Qualifier("synopticCommunityRateLimiter") RateLimiter communityRateLimiter) {
+                          @Qualifier("synopticCommunityRateLimiter") RateLimiter communityRateLimiter,
+                          @Qualifier("synopticTimelineRateLimiter") RateLimiter timelineRateLimiter) {
         this.webClient = synopticWebClient;
         this.tweetRateLimiter = tweetRateLimiter;
         this.usersByIdRateLimiter = usersByIdRateLimiter;
         this.userByUsernameRateLimiter = userByUsernameRateLimiter;
         this.communityRateLimiter = communityRateLimiter;
+        this.timelineRateLimiter = timelineRateLimiter;
     }
 
     /**
@@ -243,6 +246,48 @@ public class SynopticClient {
      */
     public Optional<JsonNode> getCommunity(String communityId) {
         return getCommunity(communityId, false).toOptional();
+    }
+
+    /**
+     * Fetches one page of a user's timeline (~20 tweets per page, newest first).
+     * @param userId the numeric user ID
+     * @param cursor pagination cursor from a previous page's next_cursor, or null for the first page
+     * @param includeReplies if false, Synoptic filters the user's replies out server-side
+     * @return JsonLookupResult whose data is the response's data node ({results, next_cursor, previous_cursor}).
+     *         Synoptic answers 400 for a nonexistent user ID, which is mapped to NOT_FOUND.
+     */
+    public JsonLookupResult getUserTimeline(String userId, String cursor, boolean includeReplies) {
+        RateLimiter.waitForPermission(timelineRateLimiter);
+        long start = System.currentTimeMillis();
+        try {
+            JsonNode response = webClient.get()
+                    .uri(uriBuilder -> {
+                        uriBuilder.path("/users/{userId}/timeline")
+                                .queryParam("include_reply", includeReplies);
+                        if (cursor != null && !cursor.isEmpty()) {
+                            uriBuilder.queryParam("cursor", cursor);
+                        }
+                        return uriBuilder.build(userId);
+                    })
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .block();
+
+            Optional<JsonNode> result = extractData(response);
+            long elapsed = System.currentTimeMillis() - start;
+            // Log a summary instead of the body - a timeline page is ~20 full tweets
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + userId + "][SYNOPTIC][TIMELINE][" + elapsed + "ms] "
+                    + (result.isPresent() ? result.get().path("results").size() + " tweets" : "Not found"));
+            return result.map(JsonLookupResult::found).orElse(JsonLookupResult.notFound());
+        } catch (WebClientResponseException.NotFound | WebClientResponseException.BadRequest e) {
+            long elapsed = System.currentTimeMillis() - start;
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + userId + "][SYNOPTIC][TIMELINE][" + elapsed + "ms] Not found (HTTP " + e.getStatusCode().value() + ")");
+            return JsonLookupResult.notFound();
+        } catch (Exception e) {
+            long elapsed = System.currentTimeMillis() - start;
+            System.out.println("[" + System.currentTimeMillis() + "][" + ApiKeyContext.getLogPrefix() + "][" + userId + "][ERROR][SYNOPTIC][TIMELINE][" + elapsed + "ms] " + e.getMessage());
+            return JsonLookupResult.error();
+        }
     }
 
     private Optional<JsonNode> extractFirstFromData(JsonNode response) {

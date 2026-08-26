@@ -37,6 +37,7 @@ public class TwitterService {
 
     public record FollowsResult(FollowsResponseDto response, boolean hadCacheMisses, int billableCount) {}
     public record CommunityMemberCountsResult(CommunityMemberCountsResponseDto response, int billableCount) {}
+    public record TimelineResult(List<AxionTweetDto> tweets, int charged) {}
 
     private final TwitterDataProvider dataProvider;
     private final VideoCacheWarmingService videoCacheWarmingService;
@@ -122,6 +123,39 @@ public class TwitterService {
                 cacheProperties.users().billingPeriodMs(),
                 () -> dataProvider.getUserByUsername(username)
         );
+    }
+
+    /**
+     * Fetches a user's most recent tweets, newest first. Not cached - always fetched live.
+     * Charges 1 credit per tweet returned: the requested count is charged upfront
+     * (so an out-of-credits caller never triggers Synoptic calls) and the shortfall is
+     * refunded if the timeline yields fewer tweets, or fully refunded on error/not-found.
+     */
+    public TimelineResult getUserTimeline(String userIdOrHandle, int count, boolean includeReplies, String apiKey) {
+        if (!creditService.decrementCredits(apiKey, count)) {
+            throw new NoCreditsException("Insufficient credits for " + count + " tweets");
+        }
+
+        long fetchStart = System.currentTimeMillis();
+        List<AxionTweetDto> tweets;
+        try {
+            tweets = dataProvider.getUserTimeline(userIdOrHandle, count, includeReplies);
+        } catch (RuntimeException e) {
+            creditService.addCredits(apiKey, count);
+            throw e;
+        }
+        latencyTracker.recordCacheMiss("/timeline", System.currentTimeMillis() - fetchStart);
+
+        int charged = tweets.size();
+        if (charged < count) {
+            creditService.addCredits(apiKey, count - charged);
+        }
+
+        usageTrackingService.recordCalls(apiKey, "/timeline", charged);
+        detailedUsageTrackingService.recordCacheMiss(apiKey, "/timeline");
+        detailedUsageTrackingService.recordFoundItems(apiKey, "/timeline", charged);
+
+        return new TimelineResult(tweets, charged);
     }
 
     /**

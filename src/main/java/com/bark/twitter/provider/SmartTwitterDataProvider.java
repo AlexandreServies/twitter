@@ -138,6 +138,12 @@ public class SmartTwitterDataProvider implements TwitterDataProvider {
         return synopticProvider.getCommunityMemberCounts(communityIds);
     }
 
+    @Override
+    public List<AxionTweetDto> getUserTimeline(String userIdOrHandle, int count, boolean includeReplies) {
+        // Timeline is Synoptic-only since twitterApiProvider throws UnsupportedOperationException
+        return synopticProvider.getUserTimeline(userIdOrHandle, count, includeReplies);
+    }
+
     /**
      * Executes a request with fallback and shadowing logic.
      */
