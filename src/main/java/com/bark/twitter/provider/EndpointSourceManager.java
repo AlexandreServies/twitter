@@ -1,5 +1,6 @@
 package com.bark.twitter.provider;
 
+import com.bark.twitter.infra.PushoverClient;
 import com.bark.twitter.provider.SourceHealthMonitor.Endpoint;
 import com.bark.twitter.provider.SourceHealthMonitor.Source;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -23,10 +24,12 @@ public class EndpointSourceManager {
     private static final long RECOVERY_PERIOD_MS = 60_000; // 1 minute healthy before switching back
 
     private final SourceHealthMonitor healthMonitor;
+    private final PushoverClient pushoverClient;
     private final Map<Endpoint, EndpointState> endpointStates = new ConcurrentHashMap<>();
 
-    public EndpointSourceManager(SourceHealthMonitor healthMonitor) {
+    public EndpointSourceManager(SourceHealthMonitor healthMonitor, PushoverClient pushoverClient) {
         this.healthMonitor = healthMonitor;
+        this.pushoverClient = pushoverClient;
     }
 
     public enum State {
@@ -115,6 +118,14 @@ public class EndpointSourceManager {
                         String message = "[" + endpoint + "] Primary " + primary + " has issues. " +
                                 healthMonitor.getHealthSummary(primary, endpoint);
                         System.out.println("[" + System.currentTimeMillis() + "][" + endpoint + "][SOURCE_MANAGER] FALLBACK triggered! " + message);
+
+                        // Send high-priority Pushover notification (not for COMMUNITY - too noisy)
+                        if (endpoint != Endpoint.COMMUNITY) {
+                            pushoverClient.sendHighPriority(
+                                    "Twitter Relay FALLBACK",
+                                    message
+                            );
+                        }
                     }
                 }
             }
