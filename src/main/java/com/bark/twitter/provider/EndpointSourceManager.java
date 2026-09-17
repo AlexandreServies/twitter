@@ -119,11 +119,13 @@ public class EndpointSourceManager {
                                 healthMonitor.getHealthSummary(primary, endpoint);
                         System.out.println("[" + System.currentTimeMillis() + "][" + endpoint + "][SOURCE_MANAGER] FALLBACK triggered! " + message);
 
-                        // Send high-priority Pushover notification
-                        pushoverClient.sendHighPriority(
-                                "Twitter Relay FALLBACK",
-                                message
-                        );
+                        // Send high-priority Pushover notification (not for COMMUNITY - too noisy)
+                        if (endpoint != Endpoint.COMMUNITY) {
+                            pushoverClient.sendHighPriority(
+                                    "Twitter Relay FALLBACK",
+                                    message
+                            );
+                        }
                     }
                 }
             }
