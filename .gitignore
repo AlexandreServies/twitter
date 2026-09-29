@@ -26,3 +26,6 @@ Thumbs.db
 
 # Elastic Beanstalk
 .elasticbeanstalk/app_versions/
+
+# Claude Code local settings
+.claude/settings.local.json
